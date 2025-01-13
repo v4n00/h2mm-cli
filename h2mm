@@ -1,0 +1,38 @@
+#!/bin/bash
+
+H2PATH="./h2path"
+
+function find_game_directory() {
+    local search_dir="/"
+    local target_dir="Steam/steamapps/common/Helldivers 2/data"
+
+    if [[ -f "$H2PATH" ]]; then
+        saved_dir=$(cat "$H2PATH")
+        if [[ -d "$saved_dir" ]]; then
+            echo "Using saved game directory: $saved_dir"
+            echo "$saved_dir"
+            return
+        else
+            echo "Saved game directory is invalid"
+        fi
+    fi
+
+    echo "Searching for the Helldivers 2 data directory..."
+    game_dir=$(find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+
+    if [[ -z "$game_dir" ]]; then
+        echo "Could not find the Helldivers 2 data directory automatically"
+        read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
+        if [[ ! -d "$game_dir" ]]; then
+            echo "Error: Provided path is not a valid directory"
+            exit 1
+        fi
+    fi
+
+    echo "$game_dir" > "$H2PATH"
+    echo "Game directory saved to: $H2PATH"
+    echo "$game_dir"
+}
+
+find_game_directory
+
