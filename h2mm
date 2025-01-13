@@ -1,15 +1,18 @@
 #!/bin/bash
 
 H2PATH="./h2path"
+MODS_DIR=""
+DB_FILE=""
 
 function find_game_directory() {
     local search_dir="/"
-    local target_dir="Steam/steamapps/common/Helldivers 2/data"
+    local target_dir="Steam/steamapps/common/Helldivers\ 2/data"
 
+    # check if path is saved
     if [[ -f "$H2PATH" ]]; then
         saved_dir=$(cat "$H2PATH")
         if [[ -d "$saved_dir" ]]; then
-            echo "Using saved game directory: $saved_dir"
+            echo "Using saved game directory: $saved_dir" >&2
             echo "$saved_dir"
             return
         else
@@ -17,11 +20,12 @@ function find_game_directory() {
         fi
     fi
 
-    echo "Searching for the Helldivers 2 data directory..."
+    # first time setup, or directory is not valid anymore
+    echo "Searching for the Helldivers 2 data directory..." >&2
     game_dir=$(find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 
     if [[ -z "$game_dir" ]]; then
-        echo "Could not find the Helldivers 2 data directory automatically"
+        echo "Could not find the Helldivers 2 data directory automatically" >&2
         read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
         if [[ ! -d "$game_dir" ]]; then
             echo "Error: Provided path is not a valid directory"
@@ -30,9 +34,124 @@ function find_game_directory() {
     fi
 
     echo "$game_dir" > "$H2PATH"
-    echo "Game directory saved to: $H2PATH"
+    echo "Game directory saved to: $H2PATH" >&2
     echo "$game_dir"
 }
 
-find_game_directory
+function initialize_directories() {
+    MODS_DIR=$(find_game_directory)
+    DB_FILE="$MODS_DIR/mods.csv"
+
+    if [[ ! -f "$DB_FILE" ]]; then
+        echo "" > "$DB_FILE"
+        echo "Database file created at: $DB_FILE"
+    fi
+}
+
+function display_help() {
+    echo "Helldivers 2 Mod Manager"
+    echo "Usage: h2mm [command] [options]"
+    echo "Commands:"
+    echo "  install -n \"<mod_name>\" <mod_files>       Install a mod with a name and files"
+    echo "  list                                        List all installed mods"
+    echo "  uninstall -n \"<mod_name>\"                 Uninstall a mod by name"
+    echo "  uninstall -i <index>                        Uninstall a mod by index"
+    echo "Usage:"
+    echo "  h2mm install -n \"Cool mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
+    echo "  h2mm uninstall -n \"Cool mod\""
+    echo "  h2mm uninstall -i 1"
+}
+
+function install_mod() {
+    local mod_name=""
+    local mod_files=()
+
+    # parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n)
+                mod_name="$2"
+                shift 2
+                ;;
+            *)
+                mod_files+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]]; then
+        echo "Error: Mod name and files are required."
+        exit 1
+    fi
+
+    # verify mod files exist
+    for file in "${mod_files[@]}"; do
+        if [[ ! -f "$file" ]]; then
+            echo "Error: File $file does not exist."
+            exit 1
+        fi
+    done
+
+    declare -A patch_count
+    for file in "${mod_files[@]}"; do
+        base_name=$(echo "$file" | sed -E 's/\.+.*//')
+        patch_prefix="$MODS_DIR/${base_name}.patch_"
+        count=$(ls "${patch_prefix}"* | grep -E '([0-9]+$)' 2>/dev/null | wc -l)
+        if [[ -z "${patch_count[$base_name]+unset}" ]]; then 
+            patch_count["$base_name"]=$count
+        fi
+
+        extension=$(echo "$file" | sed -E 's/*.patch_[0-9]+//')
+        target_file="$MODS_DIR/${base_name}.patch_${patch_count[$base_name]}${extension}"
+
+        cp "$file" "$target_file"
+        echo "Mod file $file installed at: $target_file"
+    done
+
+    # add entry to database
+    echo "$(($(wc -l < "$DB_FILE") + 1)),$mod_name,${mod_files[*]}" >> "$DB_FILE"
+    echo "Mod '$mod_name' installed successfully."
+}
+
+function list_mods() {
+    if [[ ! -s "$DB_FILE" ]]; then
+        echo "No mods installed."
+        return
+    fi
+
+    echo "Installed Mods:"
+    cat "$DB_FILE"
+}
+
+function uninstall_mod() {
+    exit 1
+}
+
+# main
+
+if [[ $# -lt 1 ]]; then
+    display_help
+    exit 1
+fi
+
+command="$1"
+shift
+
+initialize_directories
+
+case "$command" in
+    install)
+        install_mod "$@"
+        ;;
+    list)
+        list_mods
+        ;;
+    uninstall)
+        uninstall_mod "$@"
+        ;;
+    *)
+        display_help
+        ;;
+esac
 
