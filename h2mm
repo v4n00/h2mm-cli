@@ -1,5 +1,10 @@
 #!/bin/bash
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+NC='\033[0m'
+
 H2PATH="./h2path"
 MODS_DIR=""
 DB_FILE=""
@@ -8,11 +13,13 @@ function find_game_directory() {
     local search_dir="/"
     local target_dir="Steam/steamapps/common/Helldivers\ 2/data"
 
+    echo "--- /// HELLDIVERS 2 MOD MANAGER /// ---" >&2
+
     # check if path is saved
     if [[ -f "$H2PATH" ]]; then
         saved_dir=$(cat "$H2PATH")
         if [[ -d "$saved_dir" ]]; then
-            echo "Using saved game directory: $saved_dir" >&2
+            echo "Using saved game directory \$MODS_DIR: $saved_dir" >&2
             echo "$saved_dir"
             return
         else
@@ -35,6 +42,7 @@ function find_game_directory() {
 
     echo "$game_dir" > "$H2PATH"
     echo "Game directory saved to: $H2PATH" >&2
+    echo "--- /// ---" >&2
     echo "$game_dir"
 }
 
@@ -43,9 +51,11 @@ function initialize_directories() {
     DB_FILE="$MODS_DIR/mods.csv"
 
     if [[ ! -f "$DB_FILE" ]]; then
-        echo "" > "$DB_FILE"
+        touch "$DB_FILE"
         echo "Database file created at: $DB_FILE"
     fi
+
+    echo "--- /// MODS /// ---" >&2
 }
 
 function display_help() {
@@ -57,8 +67,8 @@ function display_help() {
     echo "  uninstall -n \"<mod_name>\"                 Uninstall a mod by name"
     echo "  uninstall -i <index>                        Uninstall a mod by index"
     echo "Usage:"
-    echo "  h2mm install -n \"Cool mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
-    echo "  h2mm uninstall -n \"Cool mod\""
+    echo "  h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
+    echo "  h2mm uninstall -n \"Example mod\""
     echo "  h2mm uninstall -i 1"
 }
 
@@ -93,30 +103,32 @@ function install_mod() {
         fi
     done
 
-    declare -A patch_count
+    declare -A patch_count # hash table - in case multiple named files are needed for 1 mod install, store the patch count
     for file in "${mod_files[@]}"; do
         base_name=$(echo "$file" | sed -E 's/\.+.*//')
         patch_prefix="$MODS_DIR/${base_name}.patch_"
-        count=$(ls "${patch_prefix}"* | grep -E '([0-9]+$)' 2>/dev/null | wc -l)
-        if [[ -z "${patch_count[$base_name]+unset}" ]]; then 
-            patch_count["$base_name"]=$count
+        count=$(ls "${patch_prefix}"* 2>/dev/null | grep -E '([0-9]+$)' 2>/dev/null | wc -l) # count installed patches
+
+        # set patch count for file name
+        if [[ -z "${patch_count[$base_name]+unset}" ]]; then
+            patch_count["$base_name"]=$count 
         fi
 
-        extension=$(echo "$file" | sed -E 's/*.patch_[0-9]+//')
-        target_file="$MODS_DIR/${base_name}.patch_${patch_count[$base_name]}${extension}"
+        extension=$(echo "$file" | sed -E 's/.*patch_[0-9]+//')
+        target_file="${base_name}.patch_${patch_count[$base_name]}${extension}"
 
-        cp "$file" "$target_file"
-        echo "Mod file $file installed at: $target_file"
+        cp "$file" "$MODS_DIR/$target_file"
+        echo "Mod file $file installed at \$MODS_DIR/$target_file"
     done
 
     # add entry to database
     echo "$(($(wc -l < "$DB_FILE") + 1)),$mod_name,${mod_files[*]}" >> "$DB_FILE"
-    echo "Mod '$mod_name' installed successfully."
+    echo "Mod $mod_name ($base_name) installed successfully"
 }
 
 function list_mods() {
     if [[ ! -s "$DB_FILE" ]]; then
-        echo "No mods installed."
+        echo "No mods installed"
         return
     fi
 
@@ -125,11 +137,61 @@ function list_mods() {
 }
 
 function uninstall_mod() {
-    exit 1
+    local mod_name=""
+    local mod_index=""
+
+    # parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n)
+                mod_name="$2"
+                shift 2
+                ;;
+            -i)
+                mod_index="$2"
+                shift 2
+                ;;
+            *)
+                echo "Error: Invalid argument $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ -z "$mod_name" && -z "$mod_index" ]]; then
+        echo "Error: Mod name or index is required to uninstall"
+        exit 1
+    fi
+
+    # find mod files
+    if [[ -n "$mod_index" ]]; then
+        entry=$(sed -n "${mod_index}p" "$DB_FILE")
+    elif [[ -n "$mod_name" ]]; then
+        entry=$(grep -i ",$mod_name," "$DB_FILE")
+    fi
+
+    if [[ -z "$entry" ]]; then
+        echo "Error: Mod not found"
+        exit 1
+    fi
+
+    # delete mod files
+    files=$(echo "$entry" | cut -d',' -f3- | tr ',' ' ')
+    for file in $files; do
+        echo "Removing \$MODS_DIR/$file"
+        rm -f "$MODS_DIR/$file"
+    done
+
+    # remove entry from database
+    if [[ -n "$mod_index" ]]; then
+        sed -i "/$mod_index/d" "$DB_FILE"
+    elif [[ -n "$mod_name" ]]; then
+        sed -i "/$mod_name/d" "$DB_FILE"
+    fi
+    echo "Mod uninstalled successfully"
 }
 
 # main
-
 if [[ $# -lt 1 ]]; then
     display_help
     exit 1
@@ -143,12 +205,15 @@ initialize_directories
 case "$command" in
     install)
         install_mod "$@"
+        echo "--- /// ---"
         ;;
     list)
         list_mods
+        echo "--- /// ---"
         ;;
     uninstall)
         uninstall_mod "$@"
+        echo "--- /// ---"
         ;;
     *)
         display_help
