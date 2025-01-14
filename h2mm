@@ -35,13 +35,13 @@ function find_game_directory() {
         echo "Could not find the Helldivers 2 data directory automatically" >&2
         read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
         if [[ ! -d "$game_dir" ]]; then
-            echo "Error: Provided path is not a valid directory"
+            echo -e "${RED}Error${NC}: Provided path is not a valid directory"
             exit 1
         fi
     fi
 
     echo "$game_dir" > "$H2PATH"
-    echo "Game directory saved to: $H2PATH" >&2
+    echo -e "Game directory ${GREEN}saved{$NC} to: $H2PATH" >&2
     echo "--- /// ---" >&2
     echo "$game_dir"
 }
@@ -91,19 +91,20 @@ function install_mod() {
     done
 
     if [[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]]; then
-        echo "Error: Mod name and files are required."
+        echo -e "${RED}Error${NC}: Mod name and files are required."
         exit 1
     fi
 
     # verify mod files exist
     for file in "${mod_files[@]}"; do
         if [[ ! -f "$file" ]]; then
-            echo "Error: File $file does not exist."
+            echo -e "${RED}Error${NC}: File $file does not exist."
             exit 1
         fi
     done
 
     declare -A patch_count # hash table - in case multiple named files are needed for 1 mod install, store the patch count
+    target_files=()
     for file in "${mod_files[@]}"; do
         base_name=$(echo "$file" | sed -E 's/\.+.*//')
         patch_prefix="$MODS_DIR/${base_name}.patch_"
@@ -116,14 +117,15 @@ function install_mod() {
 
         extension=$(echo "$file" | sed -E 's/.*patch_[0-9]+//')
         target_file="${base_name}.patch_${patch_count[$base_name]}${extension}"
+        target_files+=($target_file)
 
         cp "$file" "$MODS_DIR/$target_file"
-        echo "Mod file $file installed at \$MODS_DIR/$target_file"
+        echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}"
     done
 
     # add entry to database
-    echo "$(($(wc -l < "$DB_FILE") + 1)),$mod_name,${mod_files[*]}" >> "$DB_FILE"
-    echo "Mod $mod_name ($base_name) installed successfully"
+    echo "$(($(wc -l < "$DB_FILE") + 1)),$mod_name,${target_files[*]}" >> "$DB_FILE"
+    echo -e "Mod $mod_name ($base_name) ${GREEN}installed successfully${NC}"
 }
 
 function list_mods() {
@@ -133,7 +135,7 @@ function list_mods() {
     fi
 
     echo "Installed Mods:"
-    cat "$DB_FILE"
+    awk -v color="$GREEN" -v nc="$NC" -F, '{ printf "%s. %s%s%s (%s)\n", $1, color, $2, nc, $3  }' "$DB_FILE"
 }
 
 function uninstall_mod() {
@@ -152,14 +154,14 @@ function uninstall_mod() {
                 shift 2
                 ;;
             *)
-                echo "Error: Invalid argument $1"
+                echo -e "${RED}Error${NC}: Invalid argument $1"
                 exit 1
                 ;;
         esac
     done
 
     if [[ -z "$mod_name" && -z "$mod_index" ]]; then
-        echo "Error: Mod name or index is required to uninstall"
+        echo -e "${RED}Error${NC}: Mod name or index is required to uninstall"
         exit 1
     fi
 
@@ -171,24 +173,24 @@ function uninstall_mod() {
     fi
 
     if [[ -z "$entry" ]]; then
-        echo "Error: Mod not found"
+        echo -e "${RED}Error${NC}: Mod not found"
         exit 1
     fi
 
     # delete mod files
     files=$(echo "$entry" | cut -d',' -f3- | tr ',' ' ')
     for file in $files; do
-        echo "Removing \$MODS_DIR/$file"
+        echo -e "Removing ${RED}\$MODS_DIR/$file${NC}"
         rm -f "$MODS_DIR/$file"
     done
 
     # remove entry from database
     if [[ -n "$mod_index" ]]; then
-        sed -i "/$mod_index/d" "$DB_FILE"
+        sed -i "/^$mod_index/d" "$DB_FILE"
     elif [[ -n "$mod_name" ]]; then
-        sed -i "/$mod_name/d" "$DB_FILE"
+        sed -i "/,$mod_name,/d" "$DB_FILE"
     fi
-    echo "Mod uninstalled successfully"
+    echo -e "Mod ${GREEN}uninstalled successfully${NC}"
 }
 
 # main
