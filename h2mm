@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # TODO:
-# unzip command
 # export mods
 # import mods
 
@@ -15,7 +14,7 @@ MODS_DIR=""
 DB_FILE=""
 
 function get_basename() {
-    base_name=$(echo "$1" | sed -E 's/\.+.*//')
+    base_name=$(echo "$1" | awk -F/ '{print $NF}' | sed -E 's/\.+.*//')
 }
 
 function find_game_directory() {
@@ -32,7 +31,7 @@ function find_game_directory() {
             echo "$saved_dir"
             return
         else
-            echo "Saved game directory is invalid"
+            echo "Saved game directory is invalid."
         fi
     fi
 
@@ -41,10 +40,10 @@ function find_game_directory() {
     game_dir=$(find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 
     if [[ -z "$game_dir" ]]; then
-        echo "Could not find the Helldivers 2 data directory automatically" >&2
+        echo "Could not find the Helldivers 2 data directory automatically." >&2
         read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
         if [[ ! -d "$game_dir" ]]; then
-            echo -e "${RED}Error${NC}: Provided path is not a valid directory"
+            echo -e "${RED}Error${NC}: Provided path is not a valid directory."
             exit 1
         fi
     fi
@@ -71,12 +70,12 @@ function display_help() {
     echo "Helldivers 2 Mod Manager"
     echo "Usage: h2mm [command] [options]"
     echo "Commands:"
-    echo "  install -n \"<mod_name>\" <mod_files>       Install a mod with a name and files"
-    echo "  list                                        List all installed mods"
-    echo "  uninstall -n \"<mod_name>\"                 Uninstall a mod by name"
-    echo "  export \"<zip_name>\"                       Export installed mods to a zip file"
-    echo "  import \"<zip_name>\"                       Import mods from a zip file"
-    echo "  help                                        Display this help message"
+    echo "  install -n \"<mod_name>\" <mod_files>       Install a mod with a name and files."
+    echo "  list                                        List all installed mods."
+    echo "  uninstall -n \"<mod_name>\"                 Uninstall a mod by name."
+    echo "  export \"<zip_name>\"                       Export installed mods to a zip file."
+    echo "  import \"<zip_name>\"                       Import mods from a zip file."
+    echo "  help                                        Display this help message."
     echo "For more information, use h2mm [command] --help"
     echo "Basic Usage:"
     echo "  h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
@@ -86,10 +85,10 @@ function display_help() {
 function display_install_help() {
     echo "Usage: h2mm install -n \"<mod_name>\" [options] <mod_files>"
     echo "Options:"
-    echo "  -n \"<mod_name>\"       Name of the mod (MANDATORY), inside double quotes"
-    echo "  -d <mod_dir>        Directory containing mod files"
-    echo "  -z <mod_zip>        Zip file containing mod files (.zip, .rar)"
-    echo "  <mod_files>         List of mod files to install"
+    echo "  -n \"<mod_name>\"       Name of the mod (MANDATORY), inside double quotes."
+    echo "  -d <mod_dir>            Directory containing mod files."
+    echo "  -z <mod_zip>            Zip file containing mod files (.zip only)."
+    echo "  <mod_files>             List of mod files to install."
     echo "Usage:"
     echo "  h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
     echo "  h2mm install -n \"Example mod\" a5f* (using a wildcard to include all files)"
@@ -100,8 +99,8 @@ function display_install_help() {
 function display_uninstall_help() {
     echo "Usage: h2mm uninstall [options]"
     echo "Options:"
-    echo "  -n \"<mod_name>\"       Name of the mod to uninstall"
-    echo "  -i <index>          Index of the mod to uninstall"
+    echo "  -n \"<mod_name>\"       Name of the mod to uninstall."
+    echo "  -i <index>              Index of the mod to uninstall."
     echo "Usage:"
     echo "  h2mm uninstall -n \"Example mod\""
     echo "  h2mm uninstall -i 1"
@@ -141,21 +140,19 @@ function install_mod() {
     # zip file containing mod files
     if [[ -n "$mod_zip" ]]; then
         if ! command -v unzip &> /dev/null; then
-            echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again"
+            echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again."
             exit 1
         fi
-        temp_dir=$(mktemp -d)
-        unzip "$mod_zip" -d "$temp_dir"
-        mod_files+=$(find "$temp_dir" -type f -name "*.patch_*")
-        rm -rf "$temp_dir"
+        mod_dir=$(mktemp -d)
+        unzip -qq "$mod_zip" -d "$mod_dir"
     fi
 
     # directory containing mod files
     if [[ -n "$mod_dir" ]]; then
-        # mod_files+=$(find "$mod_dir" -type f -name "*.patch_*")
         readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
     fi
     
+    # verify minimum information required
     if [[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]]; then
         echo -e "${RED}Error${NC}: Mod name and files are required."
         exit 1
@@ -164,7 +161,7 @@ function install_mod() {
     # verify mod files exist
     for file in "${mod_files[@]}"; do
         if [[ ! -f "$file" ]]; then
-            echo -e "${RED}Error${NC}: File $file does not exist"
+            echo -e "${RED}Error${NC}: File $file does not exist."
             exit 1
         fi
     done
@@ -186,18 +183,18 @@ function install_mod() {
         target_files+=($target_file)
 
         cp "$file" "$MODS_DIR/$target_file"
-        echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}"
+        echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
     done
 
     # add entry to database
     next_id=$(awk -F, 'END {print $1 + 1}' "$DB_FILE")
     echo "$next_id,$mod_name,${target_files[*]}" >> "$DB_FILE"
-    echo -e "Mod $mod_name ($base_name) ${GREEN}installed successfully${NC}"
+    echo -e "Mod $mod_name ($base_name) ${GREEN}installed successfully${NC}."
 }
 
 function list_mods() {
     if [[ ! -s "$DB_FILE" ]]; then
-        echo "No mods installed"
+        echo "No mods installed."
         return
     fi
 
@@ -224,14 +221,14 @@ function uninstall_mod() {
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Error${NC}: Invalid argument $1"
+                echo -e "${RED}Error${NC}: Invalid argument $1."
                 exit 1
                 ;;
         esac
     done
 
     if [[ -z "$mod_name" && -z "$mod_index" ]]; then
-        echo -e "${RED}Error${NC}: Mod name or index is required to uninstall"
+        echo -e "${RED}Error${NC}: Mod name or index is required to uninstall."
         exit 1
     fi
 
@@ -245,7 +242,7 @@ function uninstall_mod() {
     fi
 
     if [[ -z "$entry" ]]; then
-        echo -e "${RED}Error${NC}: Mod not found"
+        echo -e "${RED}Error${NC}: Mod not found."
         exit 1
     fi
 
@@ -253,7 +250,7 @@ function uninstall_mod() {
     files=$(echo "$entry" | cut -d',' -f3- | tr ',' ' ')
     declare -A downgrades
     for file in $files; do
-        echo -e "Removing ${YELLOW}\$MODS_DIR/$file${NC}"
+        echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
         rm -f "$MODS_DIR/$file"
 
         get_basename "$file"
@@ -275,7 +272,7 @@ function uninstall_mod() {
 
                 new_patch="${base_name}.patch_${new_version}${extension}"
                 mv "$MODS_DIR/$patch" "$MODS_DIR/$new_patch"
-                echo -e "Downgraded ${ORANGE}$patch${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}"
+                echo -e "Downgraded ${ORANGE}$patch${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
                 
                 # save changes in database as well
                 sed -i "s/$patch/$new_patch/" "$DB_FILE"
@@ -286,7 +283,7 @@ function uninstall_mod() {
     # remove entry from database
     sed -i "/^$mod_index/d" "$DB_FILE"
 
-    echo -e "Mod ${GREEN}uninstalled successfully${NC}"
+    echo -e "Mod ${GREEN}uninstalled successfully${NC}."
 }
 
 # main
@@ -303,15 +300,15 @@ initialize_directories
 case "$command" in
     install)
         install_mod "$@"
-        echo "--- /// ---"
+        echo "--- /// END /// ---"
         ;;
     list)
         list_mods
-        echo "--- /// ---"
+        echo "--- /// END /// ---"
         ;;
     uninstall)
         uninstall_mod "$@"
-        echo "--- /// ---"
+        echo "--- /// END /// ---"
         ;;
     *)
         display_help
