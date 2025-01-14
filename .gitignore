@@ -1,3 +1,4 @@
-h2path
-*.patch*
-*test*
+*
+!h2mm
+!install.sh
+!README.md

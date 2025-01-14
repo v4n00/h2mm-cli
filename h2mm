@@ -3,6 +3,7 @@
 # TODO:
 # export mods
 # import mods
+# reset all
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -49,8 +50,7 @@ function find_game_directory() {
     fi
 
     echo "$game_dir" > "$H2PATH"
-    echo -e "Game directory ${GREEN}saved{$NC} to: $H2PATH" >&2
-    echo "--- /// ---" >&2
+    echo -e "Game directory ${GREEN}saved${NC}: $game_dir" >&2
     echo "$game_dir"
 }
 
@@ -63,53 +63,62 @@ function initialize_directories() {
         echo "Database file created at: $DB_FILE"
     fi
 
-    echo "--- /// MODS /// ---" >&2
+    echo "--- /// MAIN /// ---" >&2
 }
 
 function display_help() {
     echo "Helldivers 2 Mod Manager"
     echo "Usage: h2mm [command] [options]"
     echo "Commands:"
-    echo "  install -n \"<mod_name>\" <mod_files>       Install a mod with a name and files."
-    echo "  list                                        List all installed mods."
-    echo "  uninstall -n \"<mod_name>\"                 Uninstall a mod by name."
-    echo "  export \"<zip_name>\"                       Export installed mods to a zip file (not yet implemented)."
-    echo "  import \"<zip_name>\"                       Import mods from a zip file (not yet implemented)."
-    echo "  help                                        Display this help message."
-    echo "For more information, use h2mm [command] --help, available for install and uninstall."
+    echo "	install -n \"<mod_name>\" <mod_files>		Install a mod with a name and files."
+    echo "	uninstall -n \"<mod_name>\"					Uninstall a mod by name."
+    echo "	list										List all installed mods."
+    echo "	export \"<zip_name>\"						Export installed mods to a zip file (not yet implemented)."
+    echo "	import \"<zip_name>\"						Import mods from a zip file (not yet implemented)."
+    echo "	reset										Reset all installed mods (not yet implemented)."
+    echo "	help										Display this help message."
+    echo "For more information on usage, use h2mm [command] --help, available for install and uninstall."
     echo "Basic Usage:"
-    echo "  h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
-    echo "  h2mm uninstall -n \"Example mod\""
+    echo "	h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
+    echo "	h2mm uninstall -n \"Example mod\""
+    echo "Advanced Usage:"
+    echo "	Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv"
+    echo "	You can rename, delete, or edit this file to manage mods manually."
 }
 
 function display_install_help() {
     echo "Usage: h2mm install -n \"<mod_name>\" [options] <mod_files>"
     echo "Options:"
-    echo "  -n \"<mod_name>\"       Name of the mod (MANDATORY), inside double quotes."
-    echo "  -d <mod_dir>            Directory containing mod files."
-    echo "  -z <mod_zip>            Zip file containing mod files (.zip only)."
-    echo "  <mod_files>             List of mod files to install."
+    echo "	-n \"<mod_name>\"		Name of the mod (MANDATORY), inside double quotes."
+    echo "	-d <mod_dir>			Directory containing mod files."
+    echo "	-z <mod_zip>			Zip file containing mod files (.zip only)."
+    echo "	<mod_files>				List of mod files to install."
     echo "Usage:"
-    echo "  h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
-    echo "  h2mm install -n \"Example mod\" a5f* (using a wildcard to include all files)"
-    echo "  h2mm install -n \"Example mod\" -d /path/to/mod/files"
-    echo "  h2mm install -n \"Example mod\" -z /path/to/mod.zip"
+    echo "	h2mm install -n \"Example mod\" a5f2c029522e6714.patch_0 a5f2c029522e6714.patch_0.stream"
+    echo "	h2mm install -n \"Example mod\" a5f* (using a wildcard to include all files)"
+    echo "	h2mm install -n \"Example mod\" -d /path/to/mod/files"
+    echo "	h2mm install -n \"Example mod\" -z /path/to/mod.zip"
 }
 
 function display_uninstall_help() {
     echo "Usage: h2mm uninstall [options]"
     echo "Options:"
-    echo "  -n \"<mod_name>\"       Name of the mod to uninstall."
-    echo "  -i <index>              Index of the mod to uninstall."
+    echo "	-n \"<mod_name>\"		Name of the mod to uninstall."
+    echo "	-i <index>				Index of the mod to uninstall."
     echo "Usage:"
-    echo "  h2mm uninstall -n \"Example mod\""
-    echo "  h2mm uninstall -i 1"
+    echo "	h2mm uninstall -n \"Example mod\""
+    echo "	h2mm uninstall -i 1"
 }
 
 function install_mod() {
     local mod_name=""
     local mod_files=()
     local mod_dir=""
+
+    if [[ $# -eq 0 ]]; then
+        display_install_help
+        exit 0
+    fi
 
     # parse arguments
     while [[ $# -gt 0 ]]; do
@@ -204,6 +213,11 @@ function list_mods() {
 function uninstall_mod() {
     local mod_name=""
     local mod_index=""
+
+    if [[ $# -eq 0 ]]; then
+        display_uninstall_help
+        exit 0
+    fi
 
     # parse arguments
     while [[ $# -gt 0 ]]; do
@@ -309,6 +323,12 @@ case "$command" in
     uninstall)
         uninstall_mod "$@"
         echo "--- /// END /// ---"
+        ;;
+    export)
+        echo "Exporting mods to a zip file is not yet implemented."
+        ;;
+    import)
+        echo "Importing mods from a zip file is not yet implemented."
         ;;
     *)
         display_help

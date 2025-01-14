@@ -18,4 +18,4 @@ if [[ ! -x "$(command -v $SCRIPT_NAME)" ]]; then
     exit 1
 fi
 
-echo "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME."
+echo "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME. Use it by running '$SCRIPT_NAME'."
