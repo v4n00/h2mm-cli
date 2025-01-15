@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# TODO:
-# export mods
-# import mods
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
@@ -69,27 +65,28 @@ function display_help() {
 	echo "Helldivers 2 Mod Manager"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
-	echo "	install										Install a mod with files."
-	echo "	uninstall									Uninstall a mod by name."
-	echo "	list										List all installed mods."
-	echo "	export <zip_name>							Export installed mods to a zip file (not yet implemented)."
-	echo "	import <zip_name>							Import mods from a zip file (not yet implemented)."
-	echo "	reset										Reset all installed mods."
-	echo "	help										Display this help message."
+	echo "	install					Install a mod with files (short form: h2mm i)."
+	echo "	uninstall				Uninstall a mod by name (short form: h2mm u)."
+	echo "	list					List all installed mods (short form: h2mm l)."
+	echo "	export <zip_name>			Export installed mods to a zip file (short form: h2mm ex)."
+	echo "	import <zip_name>			Import mods from a zip file (short form: h2mm im)."
+	echo "	reset					Reset all installed mods (short form: h2mm rr)."
+	echo "	help					Display this help message (short form: h2mm h)."
 	echo "For more information on usage, use h2mm [command] --help, available for install and uninstall."
 	echo "Basic Usage:"
 	echo "	h2mm install -z /path/to/mod.zip"
 	echo "	h2mm install -d /path/to/mod/files"
-	echo "	h2mm uninstall -n \"Example mod\""
+	echo "	h2mm uninstall \"Example mod\""
 }
 
 function display_install_help() {
 	echo "Usage: h2mm install [options] <mod_files>"
+	echo "Short form: h2mm i [options] <mod_files>"
 	echo "Options:"
 	echo "	-d <mod_dir>		Directory containing mod files."
 	echo "	-z <mod_zip>		Zip file containing mod files (.zip only)."
-	echo "	-n \"<mod_name>\"	Name the mod yourself, inside double quotes."
-	echo "	<mod_files>			List of mod files to install."
+	echo "	-n \"<mod_name>\"		Name the mod yourself, inside double quotes."
+	echo "	<mod_files>		List of mod files to install."
 	echo "Usage:"
 	echo "	h2mm install -z /path/to/mod.zip"
 	echo "	h2mm install -d /path/to/mod/files"
@@ -98,27 +95,37 @@ function display_install_help() {
 }
 
 function display_uninstall_help() {
-	echo "Usage: h2mm uninstall [options]"
+	echo "Usage: h2mm uninstall [options] ""<mod_name>\""
+	echo "Short form: h2mm u [options] ""<mod_name>\""
 	echo "Options:"
-	echo "	-n \"<mod_name>\"			Name of the mod to uninstall."
-	echo "	-i <index>					Index of the mod to uninstall."
+	echo "	-i <index>		Index of the mod to uninstall."
 	echo "Usage:"
-	echo "	h2mm uninstall -n \"Example mod\""
+	echo "	h2mm uninstall \"Example mod\""
 	echo "	h2mm uninstall -i 1"
 }
 
 function display_list_help() {
 	echo "Usage: h2mm list"
 	echo "List all installed mods."
-	echo "	Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv"
-	echo "	You can rename, delete, or edit this file to manage mods manually."
+	echo "Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv"
+	echo "You can rename, delete, or edit this file to manage mods manually."
 }
 
 function display_reset_help() {
 	echo "Usage: h2mm reset"
 	echo "Reset all installed mods."
-	echo "	Deletes all installed mods and the database file."
-	echo "	Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv, along with the mods."
+	echo "Deletes all installed mods and the database file."
+	echo "Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv, along with the mods."
+}
+
+function display_export_help() {
+	echo "Usage: h2mm export"
+	echo "Export installed mods and database to a zip file."
+}
+
+function display_import_help() {
+	echo "Usage: h2mm import"
+	echo "Import mods and database from a zip file (coming from h2mm)."
 }
 
 function reset() {
@@ -127,12 +134,12 @@ function reset() {
 		exit 0
 	fi
 
-	read -p "Are you sure you want to reset all installed mods? (y/n): " confirm
-	if [[ "$confirm" == "y" ]]; then
+	read -p "Are you sure you want to reset all installed mods? (Y/n): " confirm
+	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		rm -f "$MODS_DIR"/*.patch_*
 		rm -f "$DB_FILE"
 		rm -f "$H2PATH"
-		echo "Database file deleted."
+		echo "Mods and database file deleted."
 	fi
 }
 
@@ -353,16 +360,62 @@ function export_mods() {
 		exit 0
 	fi
 
-	OUT_DIR=$(mktemp -d)
-	echo "$OUT_DIR"
-	cp "$DB_FILE" "$OUT_DIR"
-	ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*' | xargs -I {} cp "$MODS_DIR/{}" "$OUT_DIR"
-	if [[ $? -ne 0 ]]; then
-		echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present."
+	echo -ne "Zip file will be saved in the ${RED}current directory${NC}. Continue? (Y/n): "
+    read -r confirm
+	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
+		OUT_DIR=$(mktemp -d)
+		MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
+		mkdir -p "$MODS_EXPORT_DIR"
+		cp "$DB_FILE" "$MODS_EXPORT_DIR"
+		ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*' | xargs -I {} cp "$MODS_DIR/{}" "$MODS_EXPORT_DIR"
+
+		if [[ $? -ne 0 ]]; then
+			echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present."
+			exit 1
+		fi
+
+		current_path=$(pwd)
+		zip_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S).zip"
+		cd "$OUT_DIR" &&
+		zip -r "$zip_name" "Helldivers 2 Mods" &&
+		mv "$zip_name" "$current_path" &&
+		echo -e "Mods exported to ${GREEN}$current_path/$zip_name${NC}."
+	fi
+}
+
+function import_mods() {
+	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+		display_import_help
+		exit 0
+	fi
+
+	if [[ ! -f "$1" ]]; then
+		echo -e "${RED}Error${NC}: File $1 does not exist."
 		exit 1
 	fi
-	read -p "Enter the name of the zip file to export to: " zip_name
-	zip -r "$zip_name" "$OUT_DIR/*"
+
+	if ! command -v unzip &> /dev/null; then
+		echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again."
+		exit 1
+	fi
+
+	OUT_DIR=$(mktemp -d)
+	unzip -qq "$1" -d "$OUT_DIR"
+
+	if [[ $? -ne 0 ]]; then
+		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid."
+		exit 1
+	fi
+
+	MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
+	if [[ ! -d "$MODS_EXPORT_DIR" ]]; then
+		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid."
+		exit 1
+	fi
+
+	# copy mods verbosely
+	cp -v "$MODS_EXPORT_DIR"/* "$MODS_DIR"
+	echo -e "Mods imported ${GREEN}successfully${NC}."
 }
 
 # main
@@ -377,25 +430,25 @@ shift
 initialize_directories
 
 case "$command" in
-	install)
+	install|i)
 		install_mod "$@"
 		;;
-	list)
+	list|l)
 		list_mods "$@"
 		;;
-	uninstall)
+	uninstall|u)
 		uninstall_mod "$@"
 		;;
-	export)
+	export|ex)
 		export_mods "$@"
 		;;
-	import)
-		echo "Importing mods from a zip file is not yet implemented."
+	import|im)
+		import_mods "$@"
 		;;
-	reset)
+	reset|rr)
 		reset "$@"
 		;;
-	help|--help|-h)
+	help|--help|-h|h)
 		display_help
 		;;
 	*)
