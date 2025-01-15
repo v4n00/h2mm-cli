@@ -82,7 +82,7 @@ function initialize_directories() {
 # --- Help Functions ---
 
 function display_help() {
-	echo "Helldivers 2 Mod Manager v0.1.5"
+	echo "Helldivers 2 Mod Manager v0.1.6"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
 	echo "	install					Install a mod with files (short form: h2mm i)."
@@ -112,6 +112,7 @@ function display_install_help() {
 	echo "	h2mm install /path/to/mod/files"
 	echo "	h2mm install -n \"Example mod\" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files"
 	echo "	h2mm install -n \"Example mod\" mod* # using a wildcard to include all files"
+	echo "If the mod has more than 1 variant, you need to install the one you want by unarchiving it separately."
 }
 
 function display_uninstall_help() {
@@ -221,7 +222,6 @@ function mod_install() {
 		# check if mod name was provided, otherwise use the zip file name, get rid of .zip and version numbers
 		if [[ -z "$mod_name" ]]; then
 			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
-			echo "$mod_name" 
 		fi
 
 		mod_dir=$(mktemp -d)
@@ -376,7 +376,7 @@ function mod_uninstall() {
 
 			base_name=$(get_basename "$file")
 			current_version=$(echo $file | grep -oP '(?<=patch_)\d+')
-			downgrades["$base_name"]=current_version
+			downgrades["$base_name"]=$current_version
 		fi
 	done
 
@@ -390,7 +390,7 @@ function mod_uninstall() {
 			patch=$(get_filename_without_path "$patch")
 			patch_version=$(echo $patch | grep -oP '(?<=patch_)\d+')
 			if [[ $patch_version -gt ${downgrades[$file]} ]]; then
-				new_version=$((patch_version - 1))
+				new_version=$((patch_version - downgrades[$base_name] - 1))
 				extension=$(echo "$patch" | sed -E 's/.*patch_[0-9]+//')
 
 				new_patch="${base_name}.patch_${new_version}${extension}"
@@ -427,7 +427,7 @@ function mod_export() {
 		MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
 		mkdir -p "$MODS_EXPORT_DIR"
 		cp "$DB_FILE" "$MODS_EXPORT_DIR"
-		
+
 		for file in $(ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*'); do
 			cp "$MODS_DIR/$file" "$MODS_EXPORT_DIR"
 		done

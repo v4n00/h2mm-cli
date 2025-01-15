@@ -57,6 +57,8 @@ h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory w
 h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
 
+Important: If the mod has more than 1 variant, you need to install the one you want by unarchiving it separately.
+
 #### Uninstall a mod
 
 ```bash
@@ -112,6 +114,7 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 ## Planned features
 
-- [ ] Enable/disable mods
-- [ ] Easier way to change mod presets
-- [ ] Change to `.tar.xz` for exporting and importing
+- [ ] ! Enable/disable mods
+- [ ] !! Easier way to change mod presets
+- [ ] !! Change to `.tar.xz` for exporting and importing
+- [ ] !!! Find a way to make use of `manifest.json` and simplify installing variants
