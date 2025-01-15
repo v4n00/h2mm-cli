@@ -46,6 +46,7 @@ function find_game_directory() {
 	if [[ -z "$game_dir" ]]; then
 		echo "Could not find the Helldivers 2 data directory automatically." >&2
 		read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
+		game_dir=$(eval echo "$game_dir")
 		if [[ ! -d "$game_dir" ]]; then
 			echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2
 			exit 1
