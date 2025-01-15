@@ -90,23 +90,23 @@ function display_help() {
 }
 
 function display_install_help() {
-	echo "Usage: h2mm install [options] <mod_files>"
-	echo "Short form: h2mm i [options] <mod_files>"
+	echo "Usage: h2mm install [options] <mod_files|mod_dir|mod_zip>"
+	echo "Short form: h2mm i"
 	echo "Options:"
-	echo "	-d <mod_dir>		Directory containing mod files."
-	echo "	-z <mod_zip>		Zip file containing mod files (.zip only)."
 	echo "	-n \"<mod_name>\"		Name the mod yourself, inside double quotes."
-	echo "	<mod_files>		List of mod files to install."
+	echo "	<mod_files>		Multiple mod files, accepts wildcards."
+	echo "	<mod_dir>		Directory containing mod files."
+	echo "	<mod_zip>		Zip file containing mod files."
 	echo "Usage:"
-	echo "	h2mm install -z /path/to/mod.zip"
-	echo "	h2mm install -d /path/to/mod/files"
+	echo "	h2mm install /path/to/mod.zip"
+	echo "	h2mm install /path/to/mod/files"
 	echo "	h2mm install -n \"Example mod\" mod.patch_0 mod.patch_0.stream (-n is mandatory when using files)"
 	echo "	h2mm install -n \"Example mod\" mod* (using a wildcard to include all files)"
 }
 
 function display_uninstall_help() {
-	echo "Usage: h2mm uninstall [options] ""<mod_name>\""
-	echo "Short form: h2mm u [options] ""<mod_name>\""
+	echo "Usage: h2mm uninstall [options] \"<mod_name>\""
+	echo "Short form: h2mm u"
 	echo "Options:"
 	echo "	-i <index>		Index of the mod to uninstall."
 	echo "Usage:"
@@ -116,6 +116,7 @@ function display_uninstall_help() {
 
 function display_list_help() {
 	echo "Usage: h2mm list"
+	echo "Short form: h2mm l"
 	echo "List all installed mods."
 	echo "Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv"
 	echo "You can rename, delete, or edit this file to manage mods manually."
@@ -123,6 +124,7 @@ function display_list_help() {
 
 function display_reset_help() {
 	echo "Usage: h2mm reset"
+	echo "Short form: h2mm rr"
 	echo "Reset all installed mods."
 	echo "Deletes all installed mods and the database file."
 	echo "Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv, along with the mods."
@@ -130,11 +132,13 @@ function display_reset_help() {
 
 function display_export_help() {
 	echo "Usage: h2mm export"
+	echo "Short form: h2mm ex"
 	echo "Export installed mods and database to a zip file."
 }
 
 function display_import_help() {
 	echo "Usage: h2mm import"
+	echo "Short form: h2mm im"
 	echo "Import mods and database from a zip file (coming from h2mm)."
 }
 
@@ -168,27 +172,25 @@ function mod_install() {
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-n)
-				mod_name="$2"
-				shift 2
-				;;
-			-d)
-				mod_dir="$2"
-				shift 2
-				;;
-			-z)
-				mod_zip="$2"
-				shift 2
-				;;
-			--help|-h)
-				display_install_help
-				exit 0
-				;;
-			*)
-				mod_files+=("$1")
-				shift
-				;;
-		esac
+        -n)
+            mod_name="$2"
+            shift 2
+            ;;
+        --help|-h)
+            display_install_help
+            exit 0
+            ;;
+        *)
+            if [[ -f "$1" && "$1" == *.zip ]]; then
+                mod_zip="$1"
+            elif [[ -d "$1" ]]; then
+                mod_dir="$1"
+            else
+                mod_files+=("$1")
+            fi
+            shift
+            ;;
+    esac
 	done
 
 	# zip file containing mod files
@@ -201,7 +203,7 @@ function mod_install() {
 			echo -e "${RED}Error${NC}: Zip file $mod_zip does not exist."
 			exit 1
 		fi
-		if [[ -n "$mod_name" ]]; then
+		if [[ -z "$mod_name" ]]; then
 			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//')
 		fi
 		mod_dir=$(mktemp -d)
@@ -214,14 +216,15 @@ function mod_install() {
 			echo -e "${RED}Error${NC}: Directory $mod_dir does not exist."
 			exit 1
 		fi
+
 		readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
-		if [[ -n "$mod_name" ]]; then
-			mod_name=$($mod_dir | awk -F/ '{print $NF}')
+		if [[ -z "$mod_name" ]]; then
+			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}')
 		fi
 	fi
 	
 	# verify minimum information required
-	if [[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]]; then
+	if [[ -z "$mod_name" || ! (${#mod_files[@]} -ne 0 || -n "$mod_dir" || -n "$mod_zip" ) ]]; then
 		echo -e "${RED}Error${NC}: Mod name and files are required."
 		exit 1
 	fi
@@ -322,7 +325,7 @@ function mod_uninstall() {
 		mod_name=$(echo "$entry" | awk -F, '{print $2}')
 	elif [[ -n "$mod_name" ]]; then
 		entry=$(grep -i ",$mod_name," "$DB_FILE")
-		mod_index=$(echo "$entry" | awk -F, '{print $1}')
+		mod_index=$(echo "$entry" | awk -F, '{print $1}' | head -1)
 	fi
 
 	if [[ -z "$entry" ]]; then
@@ -331,15 +334,19 @@ function mod_uninstall() {
 	fi
 
 	# delete mod files
-	files=$(echo "$entry" | cut -d',' -f3- | tr ',' ' ')
+	files=$(echo "$entry" | cut -d',' -f3- | tr ',' ' ' | head -1)
 	declare -A downgrades
 	for file in $files; do
-		echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
-		rm -f "$MODS_DIR/$file"
+		if [[ ! -f "$MODS_DIR/$file" ]]; then
+			echo -e "${RED}Error${NC}: Mod file $file does not exist."
+		else
+			echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
+			rm -f "$MODS_DIR/$file"
 
-		base_name=$(get_basename "$file")
-		current_version=$(echo $file | grep -oP '(?<=patch_)\d+')
-		downgrades["$base_name"]=current_version
+			base_name=$(get_basename "$file")
+			current_version=$(echo $file | grep -oP '(?<=patch_)\d+')
+			downgrades["$base_name"]=current_version
+		fi
 	done
 
 	# downgrade any necessary mods
