@@ -14,6 +14,7 @@
     - [Resetting all installed mods](#resetting-all-installed-mods)
     - [Database location and details](#database-location-and-details)
   - [Contributing](#contributing)
+  - [Planned features](#planned-features)
 
 Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no mod manager GUI for Helldivers 2 on Linux yet, this small script aims to provide a simple way to manage mods on Linux.
 
@@ -86,9 +87,11 @@ You can use the short form of the commands to save some time. The shortcuts are:
 
 You can export all installed mods to a zip file and import mods from the same file. This can be useful for sharing mods with others or for backing up your mods. The zip file will be saved in the current directory.
 
+This will serve as either a backup or a way to have multiple mod setups.
+
 ```bash
-h2mm export mods.zip
-h2mm import mods.zip
+h2mm export modpack1.zip
+h2mm import modpack2.zip
 ```
 
 ### Resetting all installed mods
@@ -106,3 +109,9 @@ The database is stored in the `Helldivers 2` install directory, under the `data`
 ## Contributing
 
 Feel free to contribute to this project by creating a pull request or opening an issue.
+
+## Planned features
+
+- [ ] Enable/disable mods
+- [ ] Easier way to change mod presets
+- [ ] Change to `.tar.xz` for exporting and importing

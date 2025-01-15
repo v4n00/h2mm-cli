@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
 NC='\033[0m'
 
-H2PATH="${HOME}/.config/h2path"
+H2PATH="${HOME}/.config/h2mm/h2path"
 MODS_DIR=""
 DB_FILE=""
 
@@ -24,8 +24,6 @@ function get_basename() {
 function find_game_directory() {
 	local search_dir="${HOME}"
 	local target_dir="Steam/steamapps/common/Helldivers\ 2/data"
-
-	echo "--- /// HELLDIVERS 2 MOD MANAGER /// ---" >&2
 
 	# check if path is saved
 	if [[ -f "$H2PATH" ]]; then
@@ -53,6 +51,7 @@ function find_game_directory() {
 		fi
 	fi
 
+	mkdir -p "$(dirname "$H2PATH")"
 	echo "$game_dir" > "$H2PATH"
 
 	if [[ $? -eq 0 ]]; then
@@ -78,14 +77,12 @@ function initialize_directories() {
 			exit 1
 		fi
 	fi
-
-	echo "--- /// MAIN /// ---" >&2
 }
 
 # --- Help Functions ---
 
 function display_help() {
-	echo "Helldivers 2 Mod Manager v0.1.4"
+	echo "Helldivers 2 Mod Manager v0.1.5"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
 	echo "	install					Install a mod with files (short form: h2mm i)."
@@ -169,6 +166,9 @@ function mod_reset() {
 		rm -f "$DB_FILE"
 		rm -f "$H2PATH"
 		echo "Mods and database file deleted."
+	else
+		echo "Reset cancelled." >&2
+		exit 1
 	fi
 }
 
@@ -313,6 +313,7 @@ function mod_list() {
 		return
 	fi
 
+	echo "Installed mods:" >&2
 	awk -F, '{ if (length($3) > 150) $3 = substr($3, 1, 147) "..."; printf "%2s. %s (%s)\n", $1, $2, $3 }' "$DB_FILE"
 }
 
@@ -462,6 +463,12 @@ function mod_import() {
 		exit 1
 	fi
 
+	echo -e "Importing mods will ${RED}reset${NC} your mods." >&2
+	mod_reset
+	if [[ $? -eq 1 ]]; then
+		exit 1
+	fi
+
 	OUT_DIR=$(mktemp -d)
 	unzip -qq "$1" -d "$OUT_DIR"
 
@@ -523,8 +530,6 @@ function main() {
 			display_help
 			;;
 	esac
-
-	echo "--- /// END /// ---"
 }
 
 main "$@"
