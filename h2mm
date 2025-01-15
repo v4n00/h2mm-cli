@@ -113,8 +113,8 @@ function display_install_help() {
 	echo "Usage:"
 	echo "	h2mm install /path/to/mod.zip"
 	echo "	h2mm install /path/to/mod/files"
-	echo "	h2mm install -n \"Example mod\" mod.patch_0 mod.patch_0.stream (-n is mandatory when using files)"
-	echo "	h2mm install -n \"Example mod\" mod* (using a wildcard to include all files)"
+	echo "	h2mm install -n \"Example mod\" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files"
+	echo "	h2mm install -n \"Example mod\" mod* # using a wildcard to include all files"
 }
 
 function display_uninstall_help() {
@@ -124,7 +124,7 @@ function display_uninstall_help() {
 	echo "	-i <index>		Index of the mod to uninstall."
 	echo "Usage:"
 	echo "	h2mm uninstall \"Example mod\""
-	echo "	h2mm uninstall -i 1"
+	echo "	h2mm uninstall -i 1 # uninstall mod with index 1"
 }
 
 function display_list_help() {
@@ -137,7 +137,7 @@ function display_list_help() {
 
 function display_reset_help() {
 	echo "Usage: h2mm reset"
-	echo "Short form: h2mm rr"
+	echo "Short form: h2mm r"
 	echo "Reset all installed mods."
 	echo "Deletes all installed mods and the database file."
 	echo "Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv, along with the mods."
@@ -498,7 +498,7 @@ function main() {
 		import|im)
 			mod_import "$@"
 			;;
-		reset|rr)
+		reset|r)
 			mod_reset "$@"
 			;;
 		help|--help|-h|h)
