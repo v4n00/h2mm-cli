@@ -15,19 +15,20 @@
     - [Database location and details](#database-location-and-details)
   - [Contributing](#contributing)
 
-
 Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no mod manager GUI for Helldivers 2 on Linux yet, this small script aims to provide a simple way to manage mods on Linux.
 
 ## Installation
 
 To install/update Helldivers 2 Mod Manager CLI run the following command in your terminal:
+
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 ```
 
 ## Usage
 
 The script gets added to `/usr/local/bin/h2mm` and can be used by running `h2mm` in your shell, which will show the help message explaining how to use the script.
+
 ```bash
 h2mm
 ```
@@ -37,14 +38,15 @@ h2mm
 - `install` - Install a mod with files
 - `uninstall` - Uninstall a mod by name
 - `list` - List all installed mods
-- `export <zip_name>` -	Export installed mods to a zip file
-- `import <zip_name>` -	Import mods from a zip file
-- `reset` -	Reset all installed mods
+- `export <zip_name>` - Export installed mods to a zip file
+- `import <zip_name>` - Import mods from a zip file
+- `reset` - Reset all installed mods
 - `help` - Display the help message
 
 ### Basic usage
 
 #### Install a mod
+
 ```bash
 h2mm install /path/to/mod.zip
 h2mm install /path/to/mod/files
@@ -53,12 +55,14 @@ h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
 
 #### Uninstall a mod
+
 ```bash
 h2mm uninstall "Example mod"
 h2mm uninstall -i 1 # uninstall mod with index 1
 ```
 
 #### List installed mods
+
 ```bash
 h2mm list
 ```
@@ -68,6 +72,7 @@ h2mm list
 ### Shortcuts
 
 You can use the short form of the commands to save some time. The shortcuts are:
+
 - `i` for `install`
 - `u` for `uninstall`
 - `l` for `list`
@@ -78,6 +83,7 @@ You can use the short form of the commands to save some time. The shortcuts are:
 ### Exporting and importing
 
 You can export all installed mods to a zip file and import mods from the same file. This can be useful for sharing mods with others or for backing up your mods. The zip file will be saved in the current directory.
+
 ```bash
 h2mm export mods.zip
 h2mm import mods.zip
@@ -86,6 +92,7 @@ h2mm import mods.zip
 ### Resetting all installed mods
 
 You can reset all installed mods by running the following command. This will remove all installed mods and the database, in case things go wild.
+
 ```bash
 h2mm reset
 ```

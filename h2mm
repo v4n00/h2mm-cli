@@ -1,5 +1,5 @@
 #!/bin/bash
-# Helldivers 2 Mod Manager
+# Helldivers 2 Mod Manager v0.1.0
 
 # --- Globals ---
 
@@ -85,7 +85,7 @@ function initialize_directories() {
 # --- Help Functions ---
 
 function display_help() {
-	echo "Helldivers 2 Mod Manager"
+	echo "Helldivers 2 Mod Manager v0.1.0"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
 	echo "	install					Install a mod with files (short form: h2mm i)."
