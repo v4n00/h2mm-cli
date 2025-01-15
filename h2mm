@@ -412,7 +412,12 @@ function mod_export() {
 		exit 0
 	fi
 
-	echo -ne "Zip file will be saved in the ${RED}current directory${NC}. Continue? (Y/n): "
+	if ! command -v zip &> /dev/null; then
+		echo -e "${RED}Error${NC}: zip is not installed, please install the package and try again." >&2
+		exit 1
+	fi
+
+	echo -ne "Zip file will be saved in the current directory ($(pwd)). Continue? (Y/n): "
     read -r confirm
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		OUT_DIR=$(mktemp -d)
