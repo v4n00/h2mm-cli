@@ -1,5 +1,4 @@
 #!/bin/bash
-# Helldivers 2 Mod Manager v0.1.3
 
 # --- Globals ---
 
@@ -85,7 +84,7 @@ function initialize_directories() {
 # --- Help Functions ---
 
 function display_help() {
-	echo "Helldivers 2 Mod Manager v0.1.3"
+	echo "Helldivers 2 Mod Manager v0.1.4"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
 	echo "	install					Install a mod with files (short form: h2mm i)."
@@ -220,7 +219,8 @@ function mod_install() {
 
 		# check if mod name was provided, otherwise use the zip file name, get rid of .zip and version numbers
 		if [[ -z "$mod_name" ]]; then
-			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//' | sed -E 's/-\d.*//')
+			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
+			echo "$mod_name" 
 		fi
 
 		mod_dir=$(mktemp -d)
@@ -236,12 +236,12 @@ function mod_install() {
 
 		readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
 		if [[ -z "$mod_name" ]]; then
-			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}')
+			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
 		fi
 	fi
 	
 	# verify minimum information required
-	if [[ -z "$mod_name" || ! (${#mod_files[@]} -ne 0 || -n "$mod_dir" || -n "$mod_zip" ) ]]; then
+	if [[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]]; then
 		echo -e "${RED}Error${NC}: Mod name and files are required." >&2
 		exit 1
 	fi
