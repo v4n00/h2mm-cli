@@ -1,4 +1,5 @@
 #!/bin/bash
+# Helldivers 2 Mod Manager
 
 # --- Globals ---
 
@@ -53,7 +54,14 @@ function find_game_directory() {
 	fi
 
 	echo "$game_dir" > "$H2PATH"
-	echo -e "Game directory ${GREEN}saved${NC}: $game_dir" >&2
+
+	if [[ $? -eq 0 ]]; then
+		echo -e "Game directory ${GREEN}saved${NC}: $game_dir" >&2
+	else
+		echo -e "${RED}Error${NC}: Could not save game directory."
+		exit 1
+	fi
+	
 	echo "$game_dir"
 }
 
@@ -63,7 +71,12 @@ function initialize_directories() {
 
 	if [[ ! -f "$DB_FILE" ]]; then
 		touch "$DB_FILE"
-		echo "Database file created at: $DB_FILE"
+		if [[ $? -eq 0 ]]; then
+			echo "Database file created at: $DB_FILE"
+		else
+			echo -e "${RED}Error${NC}: Could not create database file."
+			exit 1
+		fi
 	fi
 
 	echo "--- /// MAIN /// ---" >&2
@@ -254,6 +267,7 @@ function mod_install() {
 		fi
 		patch_count["$base_name"]=$count
 
+		# if the file has an extension, look for the last patch number and use that
 		extension=$(echo "$file" | sed -E 's/.*patch_[0-9]+//')
 		if [[ -n "$extension" ]]; then
 			target_file="${base_name}.patch_$((patch_count[$base_name] - 1))${extension}"
@@ -264,7 +278,12 @@ function mod_install() {
 		target_files+=($target_file)
 
 		cp "$file" "$MODS_DIR/$target_file"
-		echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
+		if [[ $? -eq 1 ]]; then
+			echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
+		else
+			echo -e "${RED}Error${NC}: Could not install mod file $file."
+			exit 1
+		fi
 	done
 
 	# add entry to database
@@ -339,6 +358,7 @@ function mod_uninstall() {
 	for file in $files; do
 		if [[ ! -f "$MODS_DIR/$file" ]]; then
 			echo -e "${RED}Error${NC}: Mod file $file does not exist."
+			exit 1
 		else
 			echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
 			rm -f "$MODS_DIR/$file"
@@ -399,10 +419,15 @@ function mod_export() {
 
 		current_path=$(pwd)
 		zip_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S).zip"
-		cd "$OUT_DIR" &&
-		zip -r "$zip_name" "Helldivers 2 Mods" &&
-		mv "$zip_name" "$current_path" &&
-		echo -e "Mods exported to ${GREEN}$current_path/$zip_name${NC}."
+		cd "$OUT_DIR"
+		zip -r "$zip_name" "Helldivers 2 Mods"
+		mv "$zip_name" "$current_path"
+
+		if [[ $? -eq 0 ]]; then
+			echo -e "Mods exported to ${GREEN}$current_path/$zip_name${NC}."
+		else
+			echo -e "${RED}Error${NC}: Failed to export mods."
+		fi
 	fi
 }
 
@@ -438,7 +463,11 @@ function mod_import() {
 
 	# copy mods verbosely
 	cp -v "$MODS_EXPORT_DIR"/* "$MODS_DIR"
-	echo -e "Mods imported ${GREEN}successfully${NC}."
+	if [[ $? -eq 0 ]]; then
+		echo -e "Mods imported ${GREEN}successfully${NC}."
+	else
+		echo -e "${RED}Error${NC}: Failed to import mods."
+	fi
 }
 
 # --- Main ---
