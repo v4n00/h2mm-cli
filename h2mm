@@ -1,5 +1,5 @@
 #!/bin/bash
-# Helldivers 2 Mod Manager v0.1.0
+# Helldivers 2 Mod Manager v0.1.1
 
 # --- Globals ---
 
@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
 NC='\033[0m'
 
-H2PATH="./h2path"
+H2PATH="${HOME}/.config/h2path"
 MODS_DIR=""
 DB_FILE=""
 
@@ -23,7 +23,7 @@ function get_basename() {
 }
 
 function find_game_directory() {
-	local search_dir="/"
+	local search_dir="${HOME}"
 	local target_dir="Steam/steamapps/common/Helldivers\ 2/data"
 
 	echo "--- /// HELLDIVERS 2 MOD MANAGER /// ---" >&2
@@ -48,7 +48,7 @@ function find_game_directory() {
 		echo "Could not find the Helldivers 2 data directory automatically." >&2
 		read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
 		if [[ ! -d "$game_dir" ]]; then
-			echo -e "${RED}Error${NC}: Provided path is not a valid directory."
+			echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2
 			exit 1
 		fi
 	fi
@@ -58,7 +58,7 @@ function find_game_directory() {
 	if [[ $? -eq 0 ]]; then
 		echo -e "Game directory ${GREEN}saved${NC}: $game_dir" >&2
 	else
-		echo -e "${RED}Error${NC}: Could not save game directory."
+		echo -e "${RED}Error${NC}: Could not save game directory." >&2
 		exit 1
 	fi
 	
@@ -74,7 +74,7 @@ function initialize_directories() {
 		if [[ $? -eq 0 ]]; then
 			echo "Database file created at: $DB_FILE"
 		else
-			echo -e "${RED}Error${NC}: Could not create database file."
+			echo -e "${RED}Error${NC}: Could not create database file." >&2
 			exit 1
 		fi
 	fi
@@ -85,7 +85,7 @@ function initialize_directories() {
 # --- Help Functions ---
 
 function display_help() {
-	echo "Helldivers 2 Mod Manager v0.1.0"
+	echo "Helldivers 2 Mod Manager v0.1.3"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
 	echo "	install					Install a mod with files (short form: h2mm i)."
@@ -209,11 +209,11 @@ function mod_install() {
 	# zip file containing mod files
 	if [[ -n "$mod_zip" ]]; then
 		if ! command -v unzip &> /dev/null; then
-			echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again."
+			echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again." >&2
 			exit 1
 		fi
 		if [[ ! -f "$mod_zip" ]]; then
-			echo -e "${RED}Error${NC}: Zip file $mod_zip does not exist."
+			echo -e "${RED}Error${NC}: Zip file $mod_zip does not exist." >&2
 			exit 1
 		fi
 		if [[ -z "$mod_name" ]]; then
@@ -226,7 +226,7 @@ function mod_install() {
 	# directory containing mod files
 	if [[ -n "$mod_dir" ]]; then
 		if [[ ! -d "$mod_dir" ]]; then
-			echo -e "${RED}Error${NC}: Directory $mod_dir does not exist."
+			echo -e "${RED}Error${NC}: Directory $mod_dir does not exist." >&2
 			exit 1
 		fi
 
@@ -238,7 +238,7 @@ function mod_install() {
 	
 	# verify minimum information required
 	if [[ -z "$mod_name" || ! (${#mod_files[@]} -ne 0 || -n "$mod_dir" || -n "$mod_zip" ) ]]; then
-		echo -e "${RED}Error${NC}: Mod name and files are required."
+		echo -e "${RED}Error${NC}: Mod name and files are required." >&2
 		exit 1
 	fi
 
@@ -246,7 +246,7 @@ function mod_install() {
 	for file in "${mod_files[@]}"; do
 		if [[ ! -f "$file" ]]; then
 			if [[ ! -d "$file" ]]; then
-				echo -e "${RED}Error${NC}: File $file does not exist."
+				echo -e "${RED}Error${NC}: File $file does not exist." >&2
 				exit 1
 			else
 				mod_files=(${mod_files[@]/$file})
@@ -278,10 +278,10 @@ function mod_install() {
 		target_files+=($target_file)
 
 		cp "$file" "$MODS_DIR/$target_file"
-		if [[ $? -eq 1 ]]; then
-			echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
+		if [[ $? -eq 0 ]]; then
+			echo -e "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}." >&2
 		else
-			echo -e "${RED}Error${NC}: Could not install mod file $file."
+			echo -e "${RED}Error${NC}: Could not install mod file $file." >&2
 			exit 1
 		fi
 	done
@@ -289,7 +289,7 @@ function mod_install() {
 	# add entry to database
 	next_id=$(awk -F, 'END {print $1 + 1}' "$DB_FILE")
 	echo "$next_id,$mod_name,${target_files[*]}" >> "$DB_FILE"
-	echo -e "Mod $mod_name ($base_name) ${GREEN}installed successfully${NC}."
+	echo -e "Mod $mod_name ($base_name) ${GREEN}installed successfully${NC}." >&2
 }
 
 function mod_list() {
@@ -334,7 +334,7 @@ function mod_uninstall() {
 	done
 
 	if [[ -z "$mod_name" && -z "$mod_index" ]]; then
-		echo -e "${RED}Error${NC}: Mod name or index is required to uninstall."
+		echo -e "${RED}Error${NC}: Mod name or index is required to uninstall." >&2
 		exit 1
 	fi
 
@@ -348,7 +348,7 @@ function mod_uninstall() {
 	fi
 
 	if [[ -z "$entry" ]]; then
-		echo -e "${RED}Error${NC}: Mod not found."
+		echo -e "${RED}Error${NC}: Mod not found." >&2
 		exit 1
 	fi
 
@@ -357,10 +357,10 @@ function mod_uninstall() {
 	declare -A downgrades
 	for file in $files; do
 		if [[ ! -f "$MODS_DIR/$file" ]]; then
-			echo -e "${RED}Error${NC}: Mod file $file does not exist."
+			echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2
 			exit 1
 		else
-			echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
+			echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}." >&2
 			rm -f "$MODS_DIR/$file"
 
 			base_name=$(get_basename "$file")
@@ -383,7 +383,7 @@ function mod_uninstall() {
 
 				new_patch="${base_name}.patch_${new_version}${extension}"
 				mv "$MODS_DIR/$patch" "$MODS_DIR/$new_patch"
-				echo -e "Downgraded ${ORANGE}$patch${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
+				echo -e "Downgraded ${ORANGE}$patch${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}." >&2
 				
 				# save changes in database as well
 				sed -i "s/$patch/$new_patch/" "$DB_FILE"
@@ -394,7 +394,7 @@ function mod_uninstall() {
 	# remove entry from database
 	sed -i "/^$mod_index/d" "$DB_FILE"
 
-	echo -e "Mod ${GREEN}uninstalled successfully${NC}."
+	echo -e "Mod ${GREEN}uninstalled successfully${NC}." >&2
 }
 
 function mod_export() {
@@ -413,7 +413,7 @@ function mod_export() {
 		ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*' | xargs -I {} cp "$MODS_DIR/{}" "$MODS_EXPORT_DIR"
 
 		if [[ $? -ne 0 ]]; then
-			echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present."
+			echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present." >&2
 			exit 1
 		fi
 
@@ -424,9 +424,9 @@ function mod_export() {
 		mv "$zip_name" "$current_path"
 
 		if [[ $? -eq 0 ]]; then
-			echo -e "Mods exported to ${GREEN}$current_path/$zip_name${NC}."
+			echo -e "Mods exported to ${GREEN}$current_path/$zip_name${NC}." >&2
 		else
-			echo -e "${RED}Error${NC}: Failed to export mods."
+			echo -e "${RED}Error${NC}: Failed to export mods." >&2
 		fi
 	fi
 }
@@ -438,12 +438,12 @@ function mod_import() {
 	fi
 
 	if [[ ! -f "$1" ]]; then
-		echo -e "${RED}Error${NC}: File $1 does not exist."
+		echo -e "${RED}Error${NC}: File $1 does not exist." >&2
 		exit 1
 	fi
 
 	if ! command -v unzip &> /dev/null; then
-		echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again."
+		echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again." >&2
 		exit 1
 	fi
 
@@ -451,22 +451,22 @@ function mod_import() {
 	unzip -qq "$1" -d "$OUT_DIR"
 
 	if [[ $? -ne 0 ]]; then
-		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid."
+		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2
 		exit 1
 	fi
 
 	MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
 	if [[ ! -d "$MODS_EXPORT_DIR" ]]; then
-		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid."
+		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2
 		exit 1
 	fi
 
 	# copy mods verbosely
 	cp -v "$MODS_EXPORT_DIR"/* "$MODS_DIR"
 	if [[ $? -eq 0 ]]; then
-		echo -e "Mods imported ${GREEN}successfully${NC}."
+		echo -e "Mods imported ${GREEN}successfully${NC}." >&2
 	else
-		echo -e "${RED}Error${NC}: Failed to import mods."
+		echo -e "${RED}Error${NC}: Failed to import mods." >&2
 	fi
 }
 
