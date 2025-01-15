@@ -212,13 +212,17 @@ function mod_install() {
 			echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again." >&2
 			exit 1
 		fi
+
 		if [[ ! -f "$mod_zip" ]]; then
 			echo -e "${RED}Error${NC}: Zip file $mod_zip does not exist." >&2
 			exit 1
 		fi
+
+		# check if mod name was provided, otherwise use the zip file name, get rid of .zip and version numbers
 		if [[ -z "$mod_name" ]]; then
-			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//')
+			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//' | sed -E 's/-\d.*//')
 		fi
+
 		mod_dir=$(mktemp -d)
 		unzip -qq "$mod_zip" -d "$mod_dir"
 	fi
@@ -254,9 +258,13 @@ function mod_install() {
 		fi
 	done
 
-	declare -A patch_count # hash table - in case multiple named files are needed for 1 mod install, store the patch count
-	target_files=() # store the target files so we can put them in the database later
-	mod_files=($(printf "%s\n" "${mod_files[@]}" | sort -t. -k1,1 -k2,2n)) # sort the mod files because with the below logic, the .stream and .gpu_resources files need to come after their respective patch files
+	# hash table - in case multiple named files are needed for 1 mod install, store the patch count
+	declare -A patch_count
+	# store the target files so we can put them in the database later
+	target_files=()
+	# sort the mod files because with the below logic, the .stream and .gpu_resources files need to come after their respective patch files
+	IFS=$'\n' mod_files=($(printf "%s\n" "${mod_files[@]}" | sort -t. -k1,1 -k2,2n)); unset IFS
+
 	for file in "${mod_files[@]}"; do
 		base_name=$(get_basename "$file")
 		patch_prefix="$MODS_DIR/${base_name}.patch_"
