@@ -384,9 +384,10 @@ function mod_uninstall() {
 	for file in "${!downgrades[@]}"; do
 		# find all files that have the same base name, and are greater than the current version, and downgrade them
 		base_name=$(get_basename "$file")
-		same_patches=$(ls "$MODS_DIR/${base_name}.patch_"* 2>/dev/null | grep -Eo "$base_name.*")
+		same_patches=$(ls "$MODS_DIR/${base_name}.patch_"* 2>/dev/null)
 
 		for patch in $same_patches; do
+			patch=$(get_filename_without_path "$patch")
 			patch_version=$(echo $patch | grep -oP '(?<=patch_)\d+')
 			if [[ $patch_version -gt ${downgrades[$file]} ]]; then
 				new_version=$((patch_version - 1))
@@ -426,7 +427,10 @@ function mod_export() {
 		MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
 		mkdir -p "$MODS_EXPORT_DIR"
 		cp "$DB_FILE" "$MODS_EXPORT_DIR"
-		ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*' | xargs -I {} cp "$MODS_DIR/{}" "$MODS_EXPORT_DIR"
+		
+		for file in $(ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*'); do
+			cp "$MODS_DIR/$file" "$MODS_EXPORT_DIR"
+		done
 
 		if [[ $? -ne 0 ]]; then
 			echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present." >&2
