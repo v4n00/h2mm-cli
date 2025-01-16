@@ -7,6 +7,7 @@
     - [Basic usage](#basic-usage)
       - [Install a mod](#install-a-mod)
       - [Uninstall a mod](#uninstall-a-mod)
+      - [Enable/disable mods](#enabledisable-mods)
       - [List installed mods](#list-installed-mods)
   - [Advanced usage](#advanced-usage)
     - [Shortcuts](#shortcuts)
@@ -57,13 +58,23 @@ h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory w
 h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
 
-Important: If the mod has more than 1 variant, you need to install the one you want by unarchiving it separately.
+> Currently, if the mod has more than 1 variant, you need to install the one you want by unarchiving it separately.
 
 #### Uninstall a mod
 
 ```bash
 h2mm uninstall "Example mod"
 h2mm uninstall -i 1 # uninstall mod with index 1
+```
+
+
+#### Enable/disable mods
+
+```bash
+h2mm enable "Example mod"
+h2mm enable -i 1 # enable mod with index 1
+h2mm disable "Example mod"
+h2mm disable -i 1 # disable mod with index 1
 ```
 
 #### List installed mods
@@ -76,10 +87,12 @@ h2mm list
 
 ### Shortcuts
 
-You can use the short form of the commands to save some time. The shortcuts are:
+You can use the short form of commands to save some time. The shortcuts are:
 
 - `i` for `install`
 - `u` for `uninstall`
+- `e` for `enable`
+- `d` for `disable`
 - `l` for `list`
 - `ex` for `export`
 - `im` for `import`
@@ -88,8 +101,6 @@ You can use the short form of the commands to save some time. The shortcuts are:
 ### Exporting and importing
 
 You can export all installed mods to a zip file and import mods from the same file. This can be useful for sharing mods with others or for backing up your mods. The zip file will be saved in the current directory.
-
-This will serve as either a backup or a way to have multiple mod setups.
 
 ```bash
 h2mm export modpack1.zip
@@ -114,7 +125,11 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 ## Planned features
 
-- [ ] ! Enable/disable mods
-- [ ] !! Easier way to change mod presets
-- [ ] !! Change to `.tar.xz` for exporting and importing
-- [ ] !!! Find a way to make use of `manifest.json` and simplify installing variants
+- [x] Check for mod updates
+- [x] Enable/disable mods
+- [ ] Easier way to change mod presets
+- [ ] Find a way to make use of `manifest.json` and simplify installing variants
+- [x] [DEV] Change to `.tar.gz` for exporting and importing
+- [x] [DEV] Provide fixes for breaking updates
+- [ ] [DEV] Optimize code - throw errors in 1 line
+- [ ] [DEV] Rewrite some code to be more readable
