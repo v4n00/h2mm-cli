@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VERSION="0.1.6"
+
 # --- Globals ---
 
 RED='\033[0;31m'
@@ -10,6 +12,10 @@ NC='\033[0m'
 H2PATH="${HOME}/.config/h2mm/h2path"
 MODS_DIR=""
 DB_FILE=""
+
+LAST_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
+VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/dev/version"
+REPO_URL="https://github.com/v4n00/h2mm-cli"
 
 # --- Utility Functions ---
 
@@ -82,7 +88,7 @@ function initialize_directories() {
 # --- Help Functions ---
 
 function display_help() {
-	echo "Helldivers 2 Mod Manager v0.1.6"
+	echo "Helldivers 2 Mod Manager v${VERSION}"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
 	echo "	install					Install a mod with files (short form: h2mm i)."
@@ -154,6 +160,35 @@ function display_import_help() {
 }
 
 # --- Main Functions ---
+
+# Check for updates
+
+function check_for_updates() {
+	if [[ -f "$LAST_UPDATE_FILE" ]]; then
+		last_update=$(cat "$LAST_UPDATE_FILE")
+		if [[ $(date +%Y-%m-%d) -gt $(date +%Y-%m-%d -d "$last_update + 7 days") ]]; then
+			return
+		fi
+	else
+		echo $(date +%Y-%m-%d) > "$LAST_UPDATE_FILE"
+		exit 0
+	fi
+
+	latest_version=$(curl -sS "$VERSION_URL")
+	if [[ $? -ne 0 ]]; then
+		echo "${RED}Error:${NC} Could not check for updates." >&2
+		return
+	fi
+
+	if [[ "$latest_version" != "$VERSION" ]]; then
+		echo -e "${RED}!${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
+		echo -e "${RED}!${NC} You can download it from: $REPO_URL" >&2
+	fi
+
+	echo $(date +%Y-%m-%d) > "$LAST_UPDATE_FILE"
+}
+
+# Mod management
 
 function mod_reset() {
 	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
@@ -507,6 +542,7 @@ function main() {
 	command="$1"
 	shift
 	initialize_directories
+	check_for_updates
 
 	case "$command" in
 		install|i)

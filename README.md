@@ -89,8 +89,6 @@ You can use the short form of the commands to save some time. The shortcuts are:
 
 You can export all installed mods to a zip file and import mods from the same file. This can be useful for sharing mods with others or for backing up your mods. The zip file will be saved in the current directory.
 
-This will serve as either a backup or a way to have multiple mod setups.
-
 ```bash
 h2mm export modpack1.zip
 h2mm import modpack2.zip
@@ -115,6 +113,8 @@ Feel free to contribute to this project by creating a pull request or opening an
 ## Planned features
 
 - [ ] ! Enable/disable mods
+- [ ] ! Provide fixes for breaking updates
+- [ ] ! Auto update mods
 - [ ] !! Easier way to change mod presets
 - [ ] !! Change to `.tar.xz` for exporting and importing
 - [ ] !!! Find a way to make use of `manifest.json` and simplify installing variants
