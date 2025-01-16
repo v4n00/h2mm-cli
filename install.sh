@@ -56,6 +56,8 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
 
     if [[ $latest_major -gt $installed_major ]]; then
         echo -e "${ORANGE}Warning:${NC} Major version upgrade detected."
+        echo "Check out the changelogs here:"
+        echo "https://github.com/v4n00/h2mm-cli/releases"
         echo "The script will proceed to upgrade ${SCRIPT_NAME} to avoid breaking changes."
 
         # find hd2 path

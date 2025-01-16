@@ -400,11 +400,12 @@ function mod_install() {
 
 		[[ ! -f "$mod_zip" ]] && { echo -e "${RED}Error${NC}: Zip file $mod_zip does not exist." >&2; exit 1; }
 
-		# check if mod name was provided, otherwise use the zip file name, get rid of .zip and version numbers
+		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
 		if [[ -z "$mod_name" ]]; then
 			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
 		fi
 
+		# mod_dir as a temporary directory
 		mod_dir=$(mktemp -d)
 		unzip -qq "$mod_zip" -d "$mod_dir"
 	fi
@@ -414,7 +415,9 @@ function mod_install() {
 		# verify directory exists
 		[[ ! -d "$mod_dir" ]] && { echo -e "${RED}Error${NC}: Directory $mod_dir does not exist." >&2; exit 1; }
 
+		# read every file from the directory
 		readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
+		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
 		if [[ -z "$mod_name" ]]; then
 			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
 		fi
@@ -426,9 +429,10 @@ function mod_install() {
 	# verify mod files exist and is not directory
 	for file in "${mod_files[@]}"; do
 		if [[ ! -f "$file" ]]; then
-			# if it isn't a file, check if it's a directory
+			# if it isn't a file, check if it's NOT a directory
 			[[ ! -d "$file" ]] && { echo -e "${RED}Error${NC}: File $file does not exist." >&2; exit 1; }
 
+			# delete the directory from the mod_files array
 			mod_files=(${mod_files[@]/$file})
 		fi
 	done
@@ -443,15 +447,17 @@ function mod_install() {
 	for file in "${mod_files[@]}"; do
 		base_name=$(get_basename "$file")
 		patch_prefix="$MODS_DIR/${base_name}.patch_"
-		count=$(ls "${patch_prefix}"* 2>/dev/null | grep -E '([0-9]+$)' 2>/dev/null | wc -l) # count installed patches
+		# count already installed patches
+		count=$(ls "${patch_prefix}"* 2>/dev/null | grep -E '([0-9]+$)' 2>/dev/null | wc -l)
 
-		# set patch count for file name
+		# set patch count for file name if it doesn't exist yet
 		if [[ -z "${patch_count[$file]+unset}" ]]; then
 			patch_count["$file"]=$count 
 		fi
+		# if the file has an extension (e.g. .stream, .gpu_resources), set the last patch number for the next step
 		patch_count["$base_name"]=$count
 
-		# if the file has an extension, look for the last patch number and use that
+		# if the file has an extension, look for the last patch number and use that, otherwise, the count will be wrong
 		extension=$(get_extension "$file")
 		if [[ -n "$extension" ]]; then
 			target_file="${base_name}.patch_$((patch_count[$base_name] - 1))${extension}"
@@ -494,35 +500,26 @@ function mod_uninstall() {
 		esac
 	done
 
-	if [[ -z "$mod_name" && -z "$mod_index" ]]; then
-		echo -e "${RED}Error${NC}: Mod name or index is required to uninstall." >&2
-		exit 1
-	fi
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { echo -e "${RED}Error${NC}: Mod name or index is required to uninstall." >&2; exit 1; }
 
 	# find mod files
 	get_mod_name_and_index "$mod_name" "$mod_index"
 
 	# delete mod files
 	files=$(get_files_by_entry_from_db "$entry")
-	echo "$files"
 	declare -A downgrades
 	for file in $files; do
-		if [[ ! -f "$MODS_DIR/$file" ]]; then
-			echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2
-			exit 1
-		else
-			echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}." >&2
-			rm "$MODS_DIR/$file"
+		[[ ! -f "$MODS_DIR/$file" ]] && { echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2; exit 1; }
 
-			if [[ $? -ne 0 ]]; then
-				echo -e "${RED}Error${NC}: Could not remove mod file $file." >&2
-				exit 1
-			fi
+		echo -e "Removing ${ORANGE}\$MODS_DIR/$file${NC}." >&2
+		rm "$MODS_DIR/$file"
 
-			base_name=$(get_basename "$file")
-			current_version=$(echo $file | grep -oP '(?<=patch_)\d+')
-			downgrades["$base_name"]=$current_version
-		fi
+		[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not remove mod file $file." >&2; exit 1; }
+
+		# save the basename for the files that were deleted into a hash table, so we can downgrade mods with greater version number
+		base_name=$(get_basename "$file")
+		current_version=$(echo $file | grep -oP '(?<=patch_)\d+')
+		downgrades["$base_name"]=$current_version
 	done
 
 	# downgrade any necessary mods
@@ -540,6 +537,8 @@ function mod_uninstall() {
 
 				new_patch="${base_name}.patch_${new_version}${extension}"
 				mv "$MODS_DIR/$patch" "$MODS_DIR/$new_patch"
+
+				[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not downgrade mod file $patch." >&2; exit 1; }
 				echo -e "Downgraded ${ORANGE}$patch${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}." >&2
 				
 				# save changes in database as well
@@ -555,17 +554,12 @@ function mod_uninstall() {
 }
 
 function mod_list() {
-	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-		display_list_help
-		exit 0
-	fi
+	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_list_help; exit 0; }
 
-	if [[ ! -s "$DB_FILE" ]]; then
-		echo "No mods installed."
-		return
-	fi
+	[[ ! -s "$DB_FILE" ]] && { echo "No mods installed."; return; }
 
 	echo "Installed mods:" >&2
+
 	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -F, '{
     color = ($2 == "DISABLED") ? RED : GREEN;
     if (length($3) > 150) $3 = substr($3, 1, 147) "...";
@@ -573,87 +567,67 @@ function mod_list() {
 }
 
 function mod_export() {
-	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-		display_export_help
-		exit 0
-	fi
+	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_export_help; exit 0; }
 
 	echo -ne "Archive file will be saved in the current directory ($(pwd)). Continue? (Y/n): "
     read -r confirm
+
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
+		# create a temporary directory to store the mods
 		OUT_DIR=$(mktemp -d)
 		MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
 		mkdir -p "$MODS_EXPORT_DIR"
 		cp "$DB_FILE" "$MODS_EXPORT_DIR"
 
+		[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not copy mods to target directory." >&2; exit 1; }
+
+		# copy all mod files to the export directory
 		for file in $(ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*'); do
 			cp "$MODS_DIR/$file" "$MODS_EXPORT_DIR"
 		done
 
-		if [[ $? -ne 0 ]]; then
-			echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present." >&2
-			exit 1
-		fi
+		[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not export mods. Possibly because no mods are present." >&2; exit 1; }
 
+		# zip up the mods with the current date and time in the name
 		current_path=$(pwd)
 		archive_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S).tar.gz"
 		tar -czf "$current_path/$archive_name" -C "$OUT_DIR" "Helldivers 2 Mods"
 
-		if [[ $? -eq 0 ]]; then
-			echo -e "Mods exported to ${GREEN}$current_path/$archive_name${NC}." >&2
-		else
-			echo -e "${RED}Error${NC}: Failed to export mods." >&2
-		fi
+		[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Failed to export mods." >&2; exit 1; }
+		echo -e "Mods exported to ${GREEN}$current_path/$archive_name${NC}." >&2
 	fi
 }
 
 function mod_import() {
-	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-		display_import_help
-		exit 0
-	fi
+	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_import_help; exit 0; }
+	[[ ! -f "$1" ]] && { echo -e "${RED}Error${NC}: File $1 does not exist." >&2; exit 1; }
 
-	if [[ ! -f "$1" ]]; then
-		echo -e "${RED}Error${NC}: File $1 does not exist." >&2
-		exit 1
-	fi
-
+	# reset mods before importing
 	echo -e "Importing mods will ${RED}reset${NC} your mods." >&2
 	mod_reset
-	if [[ $? -eq 1 ]]; then
-		exit 1
-	fi
 
+	[[ $? -eq 1 ]] && exit 1
+
+	# extract in temp directory
 	OUT_DIR=$(mktemp -d)
 	tar -xzf "$1" -C "$OUT_DIR"
 
-	if [[ $? -ne 0 ]]; then
-		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2
-		exit 1
-	fi
+	[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2; exit 1; }
 
 	MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
-	if [[ ! -d "$MODS_EXPORT_DIR" ]]; then
-		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2
-		exit 1
-	fi
+	[[ ! -d "$MODS_EXPORT_DIR" ]] && { echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2; exit 1; }
 
 	# copy mods verbosely
 	cp -v "$MODS_EXPORT_DIR"/* "$MODS_DIR"
-	if [[ $? -eq 0 ]]; then
-		echo -e "Mods imported ${GREEN}successfully${NC}." >&2
-	else
-		echo -e "${RED}Error${NC}: Failed to import mods." >&2
-	fi
+
+	[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Failed to import mods." >&2; exit 1; }
+	echo -e "Mods imported ${GREEN}successfully${NC}." >&2
 }
 
 # --- Main ---
 
 function main() {
-	if [[ $# -lt 1 ]]; then
-		display_help
-		exit 1
-	fi
+	[[ $# -lt 1 ]] && { display_help; exit 1; }
 
 	command="$1"
 	shift
