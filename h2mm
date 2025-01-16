@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1.6"
+VERSION="0.2.0"
 
 # --- Globals ---
 
@@ -14,7 +14,7 @@ MODS_DIR=""
 DB_FILE=""
 
 LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
-VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/dev/version"
+VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 REPO_URL="https://github.com/v4n00/h2mm-cli"
 
 # --- Utility Functions ---
@@ -684,6 +684,9 @@ function main() {
 			;;
 		reset|r)
 			mod_reset "$@"
+			;;
+		version|v|-v|--version)
+			echo "${VERSION}"
 			;;
 		help|--help|-h|h)
 			display_help

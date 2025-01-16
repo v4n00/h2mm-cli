@@ -130,6 +130,6 @@ Feel free to contribute to this project by creating a pull request or opening an
 - [ ] Easier way to change mod presets
 - [ ] Find a way to make use of `manifest.json` and simplify installing variants
 - [x] [DEV] Change to `.tar.gz` for exporting and importing
-- [ ] [DEV] Provide fixes for breaking updates
+- [x] [DEV] Provide fixes for breaking updates
 - [ ] [DEV] Optimize code - throw errors in 1 line
 - [ ] [DEV] Rewrite some code to be more readable
