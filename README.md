@@ -112,9 +112,9 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 ## Planned features
 
+- [x] Check for mod updates
+- [x] Change to `.tar.gz` for exporting and importing
 - [ ] ! Enable/disable mods
 - [ ] ! Provide fixes for breaking updates
-- [ ] ! Auto update mods
 - [ ] !! Easier way to change mod presets
-- [ ] !! Change to `.tar.xz` for exporting and importing
 - [ ] !!! Find a way to make use of `manifest.json` and simplify installing variants

@@ -13,7 +13,7 @@ H2PATH="${HOME}/.config/h2mm/h2path"
 MODS_DIR=""
 DB_FILE=""
 
-LAST_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
+LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/dev/version"
 REPO_URL="https://github.com/v4n00/h2mm-cli"
 
@@ -164,13 +164,13 @@ function display_import_help() {
 # Check for updates
 
 function check_for_updates() {
-	if [[ -f "$LAST_UPDATE_FILE" ]]; then
-		last_update=$(cat "$LAST_UPDATE_FILE")
+	if [[ -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
+		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
 		if [[ $(date +%Y-%m-%d) -gt $(date +%Y-%m-%d -d "$last_update + 7 days") ]]; then
 			return
 		fi
 	else
-		echo $(date +%Y-%m-%d) > "$LAST_UPDATE_FILE"
+		echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
 		exit 0
 	fi
 
@@ -185,7 +185,7 @@ function check_for_updates() {
 		echo -e "${RED}!${NC} You can download it from: $REPO_URL" >&2
 	fi
 
-	echo $(date +%Y-%m-%d) > "$LAST_UPDATE_FILE"
+	echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
 }
 
 # Mod management
@@ -450,12 +450,7 @@ function mod_export() {
 		exit 0
 	fi
 
-	if ! command -v zip &> /dev/null; then
-		echo -e "${RED}Error${NC}: zip is not installed, please install the package and try again." >&2
-		exit 1
-	fi
-
-	echo -ne "Zip file will be saved in the current directory ($(pwd)). Continue? (Y/n): "
+	echo -ne "Archive file will be saved in the current directory ($(pwd)). Continue? (Y/n): "
     read -r confirm
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		OUT_DIR=$(mktemp -d)
@@ -473,13 +468,11 @@ function mod_export() {
 		fi
 
 		current_path=$(pwd)
-		zip_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S).zip"
-		cd "$OUT_DIR"
-		zip -r "$zip_name" "Helldivers 2 Mods"
-		mv "$zip_name" "$current_path"
+		archive_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S).tar.gz"
+		tar -czf "$current_path/$archive_name" -C "$OUT_DIR" "Helldivers 2 Mods"
 
 		if [[ $? -eq 0 ]]; then
-			echo -e "Mods exported to ${GREEN}$current_path/$zip_name${NC}." >&2
+			echo -e "Mods exported to ${GREEN}$current_path/$archive_name${NC}." >&2
 		else
 			echo -e "${RED}Error${NC}: Failed to export mods." >&2
 		fi
@@ -497,11 +490,6 @@ function mod_import() {
 		exit 1
 	fi
 
-	if ! command -v unzip &> /dev/null; then
-		echo -e "${RED}Error${NC}: unzip is not installed, please install the package and try again." >&2
-		exit 1
-	fi
-
 	echo -e "Importing mods will ${RED}reset${NC} your mods." >&2
 	mod_reset
 	if [[ $? -eq 1 ]]; then
@@ -509,7 +497,7 @@ function mod_import() {
 	fi
 
 	OUT_DIR=$(mktemp -d)
-	unzip -qq "$1" -d "$OUT_DIR"
+	tar -xzf "$1" -C "$OUT_DIR"
 
 	if [[ $? -ne 0 ]]; then
 		echo -e "${RED}Error${NC}: Could not import mods. Possibly because the zip file is invalid." >&2
