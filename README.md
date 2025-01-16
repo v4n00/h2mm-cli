@@ -42,6 +42,8 @@ h2mm
 - `install` - Install a mod with files
 - `uninstall` - Uninstall a mod by name
 - `list` - List all installed mods
+- `enable` - Enable a mod by name
+- `disable` - Disable a mod by name
 - `export <zip_name>` - Export installed mods to a zip file
 - `import <zip_name>` - Import mods from a zip file
 - `reset` - Reset all installed mods
@@ -127,6 +129,7 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 - [x] Check for mod updates
 - [x] Enable/disable mods
+- [ ] Install mods in batches
 - [ ] Easier way to change mod presets
 - [ ] Find a way to make use of `manifest.json` and simplify installing variants
 - [x] [DEV] Change to `.tar.gz` for exporting and importing
