@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.2.0"
+VERSION="0.2.1"
 
 # --- Globals ---
 
@@ -115,17 +115,19 @@ function display_help() {
 	echo "Helldivers 2 Mod Manager v${VERSION}"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
-	echo "	install					Install a mod with files (short form: h2mm i)."
-	echo "	uninstall				Uninstall a mod by name (short form: h2mm u)."
-	echo "	list					List all installed mods (short form: h2mm l)."
-	echo "	export <zip_name>			Export installed mods to a zip file (short form: h2mm ex)."
-	echo "	import <zip_name>			Import mods from a zip file (short form: h2mm im)."
-	echo "	reset					Reset all installed mods (short form: h2mm rr)."
-	echo "	help					Display this help message (short form: h2mm h)."
+	echo "	install					Install a mod with files."
+	echo "	uninstall				Uninstall a mod by name."
+	echo "	list					List all installed mods."
+	echo "	enable					Enable a mod by name."
+	echo "	disable					Disable a mod by name."
+	echo "	export <zip_name>			Export installed mods to a zip file."
+	echo "	import <zip_name>			Import mods from a zip file."
+	echo "	reset					Reset all installed mods."
+	echo "	help					Display this help message."
 	echo "For more information on usage, use h2mm [command] --help, available for install and uninstall."
 	echo "Basic Usage:"
-	echo "	h2mm install -z /path/to/mod.zip"
-	echo "	h2mm install -d /path/to/mod/files"
+	echo "	h2mm install /path/to/mod.zip"
+	echo "	h2mm install /path/to/mod/files"
 	echo "	h2mm uninstall \"Example mod\""
 }
 
@@ -568,7 +570,7 @@ function mod_list() {
 	echo "Installed mods:" >&2
 	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -F, '{
     color = ($2 == "DISABLED") ? RED : GREEN;
-    if (length($3) > 150) $3 = substr($3, 1, 147) "...";
+    if (length($4) > 150) $4 = substr($4, 1, 147) "...";
     printf "%2s. [%s%s%s] %s (%s)\n", $1, color, $2, NC, $3, $4}' "$DB_FILE"
 }
 

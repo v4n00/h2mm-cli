@@ -75,10 +75,14 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
         fi
 
         [[ ! -f "$game_dir/mods.csv" ]] && { echo -e "${RED}Error:${NC} mods.csv not found in $game_dir."; exit 1; }
+        
+        # make backup of mods in case something goes wrong
+        echo "Creating a backup of mods.csv."
+        h2mm export
 
         # iterate from installed major number to latest major number
         for ((i = installed_major + 1; i <= latest_major; i++)); do
-            echo -e "${RED}[ ]${NC} Applying breaking changes patch for version $i."
+            echo -e "Applying breaking changes patch for version $i."
 
             [[ -n "${breaking_changes_patches[$i]}" ]] && eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
             if [[ $? -ne 0 ]]; then
@@ -87,10 +91,11 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
                 
                 [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { echo "Exiting. Uninstall the script first the retry the install script."; exit 1; }
             else
-                echo -e "${GREEN}[X]${NC} Breaking changes patch for version $i applied successfully."
+                echo -e "Breaking changes patch for version $i applied ${GREEN}successfully${NC}."
             fi
         done
     fi
+    echo
 fi
 
 # Install
