@@ -25,7 +25,7 @@ Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers
 To install/update Helldivers 2 Mod Manager CLI run the following command in your terminal:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 ```
 
 Running this script will require sudo permissions. **DO NOT TRUST** random scripts from the internet. If you want to review the script before running it, check out the mod repository for yourself.
@@ -92,8 +92,10 @@ The script is developed and tested on Arch Linux, but it should work on other Li
 Status of other platforms:
 
 - Linux :white_check_mark:
-- Steam Deck - Untested :grey_question:
-- WSL - Untested, should work :grey_question:
+- Steam Deck - untested (should work) :grey_question:
+- WSL :white_check_mark:
+
+> The script works on WSL, but you need to specify the path to the Helldivers 2 mods directory manually, to find your Windows partition head to `/mnt/` and from there go to your Helldivers 2 data directory, on a typical install it should be on `/mnt/c/Program\ Files\ \(x86\)/Steam/steamapps/common/Helldivers\ 2/data`. You also need to have `unzip` installed, which can be done by running `sudo apt install unzip`.
 
 ## Advanced usage
 

@@ -34,7 +34,7 @@ breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
 )
 
-# Script
+# Handle breaking changes
 
 if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
     installed_version=$($SCRIPT_NAME --version)
@@ -62,17 +62,16 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
         search_dir="${HOME}"
         target_dir="Steam/steamapps/common/Helldivers\ 2/data"
         echo "Searching for the Helldivers 2 data directory... (20 seconds timeout)" >&2
+
         game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
         if [[ -z "$game_dir" ]]; then
-            echo "Could not find the Helldivers 2 data directory automatically." >&2
-            read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
-            game_dir=$(eval echo "$game_dir")
-
-            if [[ ! -d "$game_dir" ]]; then
-                echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2
-                exit 1
-            fi
-        fi
+			echo "Could not find the Helldivers 2 data directory automatically." >&2
+			IFS= read -ep "Please enter the path to the Helldivers 2 data directory: " game_dir
+			if [[ ! -d "$game_dir" ]]; then
+				echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2
+				exit 1
+			fi
+		fi
 
         [[ ! -f "$game_dir/mods.csv" ]] && { echo -e "${RED}Error:${NC} mods.csv not found in $game_dir."; exit 1; }
         
@@ -87,11 +86,11 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
             [[ -n "${breaking_changes_patches[$i]}" ]] && eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
             if [[ $? -ne 0 ]]; then
                 echo -ne "${RED}Error:${NC} Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
-                read -r response
+                read -er response
                 
                 [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { echo "Exiting. Uninstall the script first the retry the install script."; exit 1; }
             else
-                echo -e "Breaking changes patch for version $i applied ${GREEN}successfully${NC}."
+                echo -e "Breaking changes patch for version ${ORANGE}$i${NC} applied ${GREEN}successfully${NC}."
             fi
         done
     fi
@@ -100,12 +99,12 @@ fi
 
 # Install
 
-read -p "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " response
+IFS= read -ep "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " response
 
 if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
-    DESTINATION_PATH=$(eval echo "$response")
+    DESTINATION_PATH="$response"
     if [[ ! -d "$DESTINATION_PATH" ]]; then
-        echo -e "${RED}Error:${NC} Path $DESTINATION_PATH does not exist. Exiting..."
+        echo -e "${RED}Error:${NC} Path $DESTINATION_PATH does not exist."
         exit 1
     fi
 fi
