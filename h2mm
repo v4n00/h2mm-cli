@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.2.3"
+VERSION="0.2.4"
 
 # --- Globals ---
 
@@ -20,19 +20,23 @@ REPO_URL="https://github.com/v4n00/h2mm-cli"
 # --- Utility Functions ---
 
 function get_filename_without_path() {
-	echo $(echo "$1" | awk -F/ '{print $NF}')
+	echo "$1" | awk -F/ '{print $NF}'
 }
 
 function get_basename() {
-	echo $(get_filename_without_path "$1" | sed -E 's/\.+.*//')
+	get_filename_without_path "$1" | sed -E 's/\.+.*//'
+}
+
+function get_basename_with_patch_without_extension() {
+	echo "$1" | sed -E "s/(.*[0-9]+).*/\1/"
 }
 
 function get_extension() {
-	echo $(get_filename_without_path "$1" | sed -E 's/.*patch_[0-9]+//')
+	get_filename_without_path "$1" | sed -E 's/.*patch_[0-9]+//'
 }
 
 function get_files_by_entry_from_db() {
-	echo $(echo "$1" | cut -d',' -f4- | tr ',' ' ' | head -1)
+	echo "$1" | cut -d',' -f4- | tr ',' ' ' | head -1
 }
 
 function get_mod_name_and_index() {
@@ -529,7 +533,8 @@ function mod_uninstall() {
 
 	# delete mod files
 	files=$(get_files_by_entry_from_db "$entry")
-	declare -A downgrades
+	declare -A downgrades_versions
+	declare -A downgrades_to_remove
 	for file in $files; do
 		[[ ! -f "$MODS_DIR/$file" ]] && { echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2; exit 1; }
 
@@ -539,32 +544,44 @@ function mod_uninstall() {
 		[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not remove mod file $file." >&2; exit 1; }
 
 		# save the basename for the files that were deleted into a hash table, so we can downgrade mods with greater version number
-		base_name=$(get_basename "$file")
+		# also depending on how many patches the mod has, we need to downgrade with more versions
 		current_version=$(echo $file | grep -oP '(?<=patch_)\d+')
-		downgrades["$base_name"]=$current_version
+		base_name_with_patch=$(get_basename_with_patch_without_extension "$file")
+		base_name=$(get_basename "$file")
+		downgrades_versions["$base_name_with_patch"]=$current_version
+		[[ -z "${downgrades_to_remove["$base_name"]+unset}" ]] && downgrades_to_remove["$base_name"]=$(echo $files | sed -E "s/(.*[0-9]+).*/\1/" | wc -l)
 	done
 
-	# downgrade any necessary mods
-	for file in "${!downgrades[@]}"; do
+	# downgrade any necessary mods - it takes ~20 minutes to re-understand this code so I'm writing a comment here
+	# for each base name, find all files that have the same base name, and are greater than the current version, and downgrade them
+	# the downgrades_versions hash table stores the current version, so we can compare it with the version of the files
+	# the downgrades_to_remove hash table stores the number of patches the mod has, so we can downgrade with more versions
+	# for example, if we have:
+	# mod 1: AAA.patch_0 AAA.patch_0.stream AAA.patch_1 AAA.patch_1.stream
+	# mod 2: AAA.patch_2 AAA.patch_2.stream AAA.patch_3 AAA.patch_3.stream
+	# mod 3: AAA.patch_4 AAA.patch_4.stream AAA.patch_5 AAA.patch_5.stream
+	# if we remove mod 2, we need to downgrade mod 3 (which has version 4 and 5 > 3 (last patch removed)) by 2 versions,
+	# the number 2 we get by counting the number of unique base names (without extensions like .stream, but with the .patch_[0-9]) in the files
+	for base_name in "${!downgrades_to_remove[@]}"; do
 		# find all files that have the same base name, and are greater than the current version, and downgrade them
-		base_name=$(get_basename "$file")
-		same_patches=$(ls "$MODS_DIR/${base_name}.patch_"* 2>/dev/null)
+		IFS=$'\n' mods_to_remove=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -V)); unset IFS
+		base_name_with_patch=$(get_basename_with_patch_without_extension "$file")
 
-		for patch in $same_patches; do
-			patch=$(get_filename_without_path "$patch")
-			patch_version=$(echo $patch | grep -oP '(?<=patch_)\d+')
-			if [[ $patch_version -gt ${downgrades[$file]} ]]; then
-				new_version=$((patch_version - downgrades[$base_name] - 1))
-				extension=$(get_extension "$path")
+		for mod in "${mods_to_remove[@]}"; do
+			mod=$(get_filename_without_path "$mod")
+			patch_version=$(echo $mod | grep -oP '(?<=patch_)\d+')
+			if [[ $patch_version -gt ${downgrades_versions[$base_name_with_patch]} ]]; then
+				new_version=$((patch_version - downgrades_to_remove["$base_name"] - 1))
+				extension=$(get_extension "$mod")
 
 				new_patch="${base_name}.patch_${new_version}${extension}"
-				mv "$MODS_DIR/$patch" "$MODS_DIR/$new_patch"
+				mv "$MODS_DIR/$mod" "$MODS_DIR/$new_patch"
 
-				[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not downgrade mod file $patch." >&2; exit 1; }
-				echo -e "Downgraded ${ORANGE}$patch${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}." >&2
+				[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not downgrade mod file $mod." >&2; exit 1; }
+				echo -e "Downgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}." >&2
 				
 				# save changes in database as well
-				sed -i "s/$patch/$new_patch/" "$DB_FILE"
+				sed -i "s/$mod/$new_patch/" "$DB_FILE"
 			fi
 		done
 	done
