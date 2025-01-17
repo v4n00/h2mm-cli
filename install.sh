@@ -61,8 +61,8 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
         # find hd2 path
         search_dir="${HOME}"
         target_dir="Steam/steamapps/common/Helldivers\ 2/data"
-        echo "Searching for the Helldivers 2 data directory..." >&2
-        game_dir=$(find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+        echo "Searching for the Helldivers 2 data directory... (20 seconds timeout)" >&2
+        game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
         if [[ -z "$game_dir" ]]; then
             echo "Could not find the Helldivers 2 data directory automatically." >&2
             read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
