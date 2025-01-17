@@ -7,7 +7,7 @@ Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers
   - [Usage](#usage)
     - [Available commands](#available-commands)
     - [Basic usage](#basic-usage)
-      - [Install a mod](#install-a-mod)
+      - [Install mod(s)](#install-mods)
       - [Uninstall a mod](#uninstall-a-mod)
       - [Enable/disable mods](#enabledisable-mods)
       - [List installed mods](#list-installed-mods)
@@ -52,11 +52,12 @@ h2mm
 
 ### Basic usage
 
-#### Install a mod
+#### Install mod(s)
 
 ```bash
 h2mm install /path/to/mod.zip
 h2mm install /path/to/mod/files
+h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files
 h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files
 h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
@@ -89,7 +90,7 @@ h2mm list
 
 The script is developed and tested on Arch Linux, but it should work on other Linux distributions as well. If you encounter any issues, please open an issue on the repository.
 
-Status of other platforms:
+Status of platforms:
 
 - Linux :white_check_mark:
 - Steam Deck - untested (should work) :grey_question:
@@ -141,10 +142,11 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 - [x] Check for mod updates
 - [x] Enable/disable mods
-- [ ] Install mods in batches
+- [x] Install mods in batches
 - [ ] Easier way to change mod presets
 - [ ] Find a way to make use of `manifest.json` and simplify installing variants
 - [x] [DEV] Change to `.tar.gz` for exporting and importing
 - [x] [DEV] Provide fixes for breaking updates
-- [ ] [DEV] Optimize code - throw errors in 1 line
+- [x] [DEV] Optimize code - throw errors in 1 line
+- [ ] [DEV] Import/export treat breaking changes
 - [ ] [DEV] Rewrite some code to be more readable

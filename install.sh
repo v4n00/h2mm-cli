@@ -56,6 +56,8 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
 
     if [[ $latest_major -gt $installed_major ]]; then
         echo -e "${ORANGE}Warning:${NC} Major version upgrade detected."
+        echo "Check out the changelogs here:"
+        echo "https://github.com/v4n00/h2mm-cli/releases"
         echo "The script will proceed to upgrade ${SCRIPT_NAME} to avoid breaking changes."
 
         # find hd2 path
@@ -83,7 +85,11 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
         for ((i = installed_major + 1; i <= latest_major; i++)); do
             echo -e "Applying breaking changes patch for version $i."
 
-            [[ -n "${breaking_changes_patches[$i]}" ]] && eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
+            if [[ -n "${breaking_changes_patches[$i]}" ]]; then 
+                eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
+            else
+                echo "No breaking changes for version $i."
+            fi
             if [[ $? -ne 0 ]]; then
                 echo -ne "${RED}Error:${NC} Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
                 read -er response
