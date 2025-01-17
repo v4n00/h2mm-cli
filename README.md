@@ -1,5 +1,7 @@
 # Helldivers 2 Mod Manager CLI
 
+Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no Linux mod manager available and I like being a nerd by using CLI tools instead of GUIs, this project was born.
+
 - [Helldivers 2 Mod Manager CLI](#helldivers-2-mod-manager-cli)
   - [Installation](#installation)
   - [Usage](#usage)
@@ -9,6 +11,7 @@
       - [Uninstall a mod](#uninstall-a-mod)
       - [Enable/disable mods](#enabledisable-mods)
       - [List installed mods](#list-installed-mods)
+  - [Compatibility](#compatibility)
   - [Advanced usage](#advanced-usage)
     - [Shortcuts](#shortcuts)
     - [Exporting and importing](#exporting-and-importing)
@@ -17,14 +20,12 @@
   - [Contributing](#contributing)
   - [Planned features](#planned-features)
 
-Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no mod manager GUI for Helldivers 2 on Linux yet, this small script aims to provide a simple way to manage mods on Linux.
-
 ## Installation
 
 To install/update Helldivers 2 Mod Manager CLI run the following command in your terminal:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 ```
 
 Running this script will require sudo permissions. **DO NOT TRUST** random scripts from the internet. If you want to review the script before running it, check out the mod repository for yourself.
@@ -42,8 +43,10 @@ h2mm
 - `install` - Install a mod with files
 - `uninstall` - Uninstall a mod by name
 - `list` - List all installed mods
-- `export <zip_name>` - Export installed mods to a zip file
-- `import <zip_name>` - Import mods from a zip file
+- `enable` - Enable a mod by name
+- `disable` - Disable a mod by name
+- `export` - Export installed mods to a zip file
+- `import` - Import mods from a zip file
 - `reset` - Reset all installed mods
 - `help` - Display the help message
 
@@ -67,7 +70,6 @@ h2mm uninstall "Example mod"
 h2mm uninstall -i 1 # uninstall mod with index 1
 ```
 
-
 #### Enable/disable mods
 
 ```bash
@@ -82,6 +84,18 @@ h2mm disable -i 1 # disable mod with index 1
 ```bash
 h2mm list
 ```
+
+## Compatibility
+
+The script is developed and tested on Arch Linux, but it should work on other Linux distributions as well. If you encounter any issues, please open an issue on the repository.
+
+Status of other platforms:
+
+- Linux :white_check_mark:
+- Steam Deck - untested (should work) :grey_question:
+- WSL :white_check_mark:
+
+> The script works on WSL, but you need to specify the path to the Helldivers 2 mods directory manually, to find your Windows partition head to `/mnt/` and from there go to your Helldivers 2 data directory, on a typical install it should be on `/mnt/c/Program\ Files\ \(x86\)/Steam/steamapps/common/Helldivers\ 2/data`. You also need to have `unzip` installed, which can be done by running `sudo apt install unzip`.
 
 ## Advanced usage
 
@@ -127,6 +141,7 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 - [x] Check for mod updates
 - [x] Enable/disable mods
+- [ ] Install mods in batches
 - [ ] Easier way to change mod presets
 - [ ] Find a way to make use of `manifest.json` and simplify installing variants
 - [x] [DEV] Change to `.tar.gz` for exporting and importing

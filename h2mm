@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.2.0"
+VERSION="0.2.2"
 
 # --- Globals ---
 
@@ -73,8 +73,7 @@ function find_game_directory() {
 
 	if [[ -z "$game_dir" ]]; then
 		echo "Could not find the Helldivers 2 data directory automatically." >&2
-		read -p "Please enter the path to the Helldivers 2 data directory: " game_dir
-		game_dir=$(eval echo "$game_dir")
+		IFS= read -ep "Please enter the path to the Helldivers 2 data directory: " game_dir
 		if [[ ! -d "$game_dir" ]]; then
 			echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2
 			exit 1
@@ -115,17 +114,19 @@ function display_help() {
 	echo "Helldivers 2 Mod Manager v${VERSION}"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
-	echo "	install					Install a mod with files (short form: h2mm i)."
-	echo "	uninstall				Uninstall a mod by name (short form: h2mm u)."
-	echo "	list					List all installed mods (short form: h2mm l)."
-	echo "	export <zip_name>			Export installed mods to a zip file (short form: h2mm ex)."
-	echo "	import <zip_name>			Import mods from a zip file (short form: h2mm im)."
-	echo "	reset					Reset all installed mods (short form: h2mm rr)."
-	echo "	help					Display this help message (short form: h2mm h)."
+	echo "	install					Install a mod with files."
+	echo "	uninstall				Uninstall a mod by name."
+	echo "	list					List all installed mods."
+	echo "	enable					Enable a mod by name."
+	echo "	disable					Disable a mod by name."
+	echo "	export <zip_name>			Export installed mods to a zip file."
+	echo "	import <zip_name>			Import mods from a zip file."
+	echo "	reset					Reset all installed mods."
+	echo "	help					Display this help message."
 	echo "For more information on usage, use h2mm [command] --help, available for install and uninstall."
 	echo "Basic Usage:"
-	echo "	h2mm install -z /path/to/mod.zip"
-	echo "	h2mm install -d /path/to/mod/files"
+	echo "	h2mm install /path/to/mod.zip"
+	echo "	h2mm install /path/to/mod/files"
 	echo "	h2mm uninstall \"Example mod\""
 }
 
@@ -210,7 +211,7 @@ function display_import_help() {
 function check_for_updates() {
 	if [[ -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
 		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
-		if [[ $(date +%Y-%m-%d) -gt $(date +%Y-%m-%d -d "$last_update + 7 days") ]]; then
+		if [[ $(date +%Y-%m-%d) -gt $(date +%Y-%m-%d -d "$last_update + 3 days") ]]; then
 			return
 		fi
 	else
@@ -293,38 +294,38 @@ function mod_disable() {
 }
 
 function mod_enable() {
-    local mod_name=""
-    local mod_index=""
+	local mod_name=""
+	local mod_index=""
 
-    [[ $# -eq 0 ]] && { display_enable_help; exit 0; }
+	[[ $# -eq 0 ]] && { display_enable_help; exit 0; }
 
-    # parse arguments
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -i)
-                mod_index="$2"; shift 2
-                ;;
-            --help|-h)
-                display_enable_help; exit 0
-                ;;
-            *)
-                mod_name="$1"; shift 1
-                ;;
-        esac
-    done
+	# parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			-i)
+				mod_index="$2"; shift 2
+				;;
+			--help|-h)
+				display_enable_help; exit 0
+				;;
+			*)
+				mod_name="$1"; shift 1
+				;;
+		esac
+	done
 
-    [[ -z "$mod_name" && -z "$mod_index" ]] && { echo -e "${RED}Error${NC}: Mod name or index is required to enable." >&2; exit 1; }
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { echo -e "${RED}Error${NC}: Mod name or index is required to enable." >&2; exit 1; }
 
-    # find mod files
+	# find mod files
 	get_mod_name_and_index "$mod_name" "$mod_index"
 
 	[[ "$status" == "ENABLED" ]] && { echo -e "${RED}Error${NC}: Mod $mod_name is already enabled." >&2; exit 1; }
 
-    files=$(get_files_by_entry_from_db "$entry")
+	files=$(get_files_by_entry_from_db "$entry")
 
-    # enable each mod file by removing disabled_ from the start of the filename
-    for file in $files; do
-        disabled_file="disabled_$file"
+	# enable each mod file by removing disabled_ from the start of the filename
+	for file in $files; do
+		disabled_file="disabled_$file"
 
 		# check if the files exists
 		[[ -f "$MODS_DIR/$disabled_file" ]] || { echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2; exit 1; }
@@ -334,17 +335,17 @@ function mod_enable() {
 		# check if the file was moved successfully
 		[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not enable mod file $disabled_file." >&2; exit 1; }
 		echo -e "Enabled ${ORANGE}$disabled_file${NC} (changed to ${GREEN}\$MODS_DIR/$file${NC})." >&2
-    done
+	done
 
-    # update the database
-    sed -i "/^$mod_index,/s/DISABLED/ENABLED/" "$DB_FILE"
+	# update the database
+	sed -i "/^$mod_index,/s/DISABLED/ENABLED/" "$DB_FILE"
 
-    if [[ $? -eq 0 ]]; then
-        echo -e "Mod $mod_name ${GREEN}enabled${NC} successfully." >&2
-    else
-        echo -e "${RED}Error${NC}: Failed to enable mod." >&2
-        exit 1
-    fi
+	if [[ $? -eq 0 ]]; then
+		echo -e "Mod $mod_name ${GREEN}enabled${NC} successfully." >&2
+	else
+		echo -e "${RED}Error${NC}: Failed to enable mod." >&2
+		exit 1
+	fi
 }
 
 function mod_reset() {
@@ -375,23 +376,23 @@ function mod_install() {
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-        -n)
-            mod_name="$2"; shift 2
-            ;;
-        --help|-h)
-            display_install_help; exit 0
-            ;;
-        *)
-            if [[ -f "$1" && "$1" == *.zip ]]; then
-                mod_zip="$1"
-            elif [[ -d "$1" ]]; then
-                mod_dir="$1"
-            else
-                mod_files+=("$1")
-            fi
-            shift
-            ;;
-    	esac
+		-n)
+			mod_name="$2"; shift 2
+			;;
+		--help|-h)
+			display_install_help; exit 0
+			;;
+		*)
+			if [[ -f "$1" && "$1" == *.zip ]]; then
+				mod_zip="$1"
+			elif [[ -d "$1" ]]; then
+				mod_dir="$1"
+			else
+				mod_files+=("$1")
+			fi
+			shift
+			;;
+		esac
 	done
 
 	# zip file containing mod files
@@ -561,17 +562,16 @@ function mod_list() {
 	echo "Installed mods:" >&2
 
 	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -F, '{
-    color = ($2 == "DISABLED") ? RED : GREEN;
-    if (length($3) > 150) $3 = substr($3, 1, 147) "...";
-    printf "%2s. [%s%s%s] %s (%s)\n", $1, color, $2, NC, $3, $4}' "$DB_FILE"
+	color = ($2 == "DISABLED") ? RED : GREEN;
+	if (length($4) > 150) $4 = substr($4, 1, 147) "...";
+	printf "%2s. [%s%s%s] %s (%s)\n", $1, color, $2, NC, $3, $4}' "$DB_FILE"
 }
 
 function mod_export() {
 	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_export_help; exit 0; }
 
 	echo -ne "Archive file will be saved in the current directory ($(pwd)). Continue? (Y/n): "
-    read -r confirm
-
+	read -r confirm
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		# create a temporary directory to store the mods
 		OUT_DIR=$(mktemp -d)
