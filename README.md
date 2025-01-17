@@ -7,7 +7,7 @@ Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers
   - [Usage](#usage)
     - [Available commands](#available-commands)
     - [Basic usage](#basic-usage)
-      - [Install a mod](#install-a-mod)
+      - [Install mod(s)](#install-mods)
       - [Uninstall a mod](#uninstall-a-mod)
       - [Enable/disable mods](#enabledisable-mods)
       - [List installed mods](#list-installed-mods)
@@ -52,11 +52,12 @@ h2mm
 
 ### Basic usage
 
-#### Install a mod
+#### Install mod(s)
 
 ```bash
 h2mm install /path/to/mod.zip
 h2mm install /path/to/mod/files
+h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files
 h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files
 h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
