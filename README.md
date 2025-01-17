@@ -89,7 +89,7 @@ h2mm list
 
 The script is developed and tested on Arch Linux, but it should work on other Linux distributions as well. If you encounter any issues, please open an issue on the repository.
 
-Status of other platforms:
+Status of platforms:
 
 - Linux :white_check_mark:
 - Steam Deck - untested (should work) :grey_question:
@@ -141,10 +141,11 @@ Feel free to contribute to this project by creating a pull request or opening an
 
 - [x] Check for mod updates
 - [x] Enable/disable mods
-- [ ] Install mods in batches
+- [x] Install mods in batches
 - [ ] Easier way to change mod presets
 - [ ] Find a way to make use of `manifest.json` and simplify installing variants
 - [x] [DEV] Change to `.tar.gz` for exporting and importing
 - [x] [DEV] Provide fixes for breaking updates
-- [ ] [DEV] Optimize code - throw errors in 1 line
+- [x] [DEV] Optimize code - throw errors in 1 line
+- [ ] [DEV] Import/export treat breaking changes
 - [ ] [DEV] Rewrite some code to be more readable

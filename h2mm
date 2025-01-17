@@ -368,8 +368,9 @@ function mod_reset() {
 
 function mod_install() {
 	local mod_name=""
-	local mod_dir=""
+	local mod_dir=()
 	local mod_files=()
+	local mod_zip=()
 
 	[[ $# -eq 0 ]] && { display_install_help; exit 0; }
 
@@ -384,9 +385,9 @@ function mod_install() {
 			;;
 		*)
 			if [[ -f "$1" && "$1" == *.zip ]]; then
-				mod_zip="$1"
+				mod_zip+=("$1")
 			elif [[ -d "$1" ]]; then
-				mod_dir="$1"
+				mod_dir+=("$1")
 			else
 				mod_files+=("$1")
 			fi
@@ -395,7 +396,26 @@ function mod_install() {
 		esac
 	done
 
-	# zip file containing mod files
+	# edge case when there is a combination of mod zips and directories, call function for all zips and dirs
+	if [[ ${mod_zip} && ${mod_dir} ]]; then
+		mod_install "${mod_zip[@]}"
+		mod_install "${mod_dir[@]}"
+
+		# reset arrays
+		mod_zip=()
+		mod_dir=()
+
+		# if there are no more arguments, exit
+		[[ ${#mod_files[@]} -eq 0 ]] && exit 0
+	fi
+
+	# if there's more than 1 zip, call recursively
+	while [[ ${#mod_zip[@]} -gt 1 ]]; do
+		mod_install "${mod_zip[0]}"
+		mod_zip=("${mod_zip[@]:1}")
+	done
+	
+	# extract the zip file and pass it to mod dirs
 	if [[ -n "$mod_zip" ]]; then
 		command -v unzip &> /dev/null || { echo -e "${RED}Error${NC}: unzip package is not installed." >&2; exit 1; }
 
@@ -407,9 +427,15 @@ function mod_install() {
 		fi
 
 		# mod_dir as a temporary directory
-		mod_dir=$(mktemp -d)
+		mod_dir+=$(mktemp -d)
 		unzip -qq "$mod_zip" -d "$mod_dir"
 	fi
+
+	# if there's more than 1 directory, call recursively
+	while [[ ${#mod_dir[@]} -gt 1 ]]; do
+		mod_install "${mod_dir[0]}"
+		mod_dir=("${mod_dir[@]:1}")
+	done
 
 	# directory containing mod files
 	if [[ -n "$mod_dir" ]]; then
@@ -427,15 +453,9 @@ function mod_install() {
 	# verify minimum information required
 	[[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]] && { echo -e "${RED}Error${NC}: Mod name and files are required." >&2; exit 1; }
 
-	# verify mod files exist and is not directory
+	# verify mod files exist
 	for file in "${mod_files[@]}"; do
-		if [[ ! -f "$file" ]]; then
-			# if it isn't a file, check if it's NOT a directory
-			[[ ! -d "$file" ]] && { echo -e "${RED}Error${NC}: File $file does not exist." >&2; exit 1; }
-
-			# delete the directory from the mod_files array
-			mod_files=(${mod_files[@]/$file})
-		fi
+		[[ ! -f "$file" ]] && { echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2; exit 1; }
 	done
 
 	# hash table - in case multiple named files are needed for 1 mod install, store the patch count
