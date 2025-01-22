@@ -8,6 +8,7 @@ NC='\033[0m'
 
 DESTINATION_PATH="/usr/local/bin"
 SCRIPT_NAME="h2mm"
+REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
 
 if [ "$(id -u)" -eq 0 ]; then
     echo "Run me as normal user, not as root."
@@ -32,6 +33,7 @@ echo
 
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
+    ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
 )
 
 # Handle breaking changes
@@ -41,7 +43,7 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
     # version 1 show the help message, if the first character is not a 0, store installed version as 0.1.6
     [[ ${installed_version:0:1} != "0" ]] && { installed_version="0.1.6"; }
 
-    latest_version=$(curl -sS https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version)
+    latest_version=$(curl -sS "$REPO_URL"/version)
     if [[ "$latest_version" == "$installed_version" ]]; then
         echo -e "You are reinstalling version $installed_version."
     else
@@ -116,7 +118,7 @@ if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
 fi
 
 echo "Installing $SCRIPT_NAME to $DESTINATION_PATH."
-sudo curl https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME" 
+sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME" 
 sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
 
 if [[ ! -x "$(command -v $SCRIPT_NAME)" ]]; then
