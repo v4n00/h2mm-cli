@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.3.0"
+VERSION="0.3.1"
 
 # --- Globals ---
 
@@ -102,8 +102,8 @@ function find_game_directory() {
 	fi
 
 	# first time setup, or directory is not valid anymore
-	echo "Searching for the Helldivers 2 data directory..." >&2
-	game_dir=$(find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+	echo "Searching for the Helldivers 2 data directory... (20 seconds timeout)" >&2
+	game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 
 	if [[ -z "$game_dir" ]]; then
 		echo "Could not find the Helldivers 2 data directory automatically." >&2
@@ -677,7 +677,7 @@ function mod_uninstall() {
 			mod=$(get_filename_without_path "$mod")
 			patch_version=$(echo $mod | grep -oP '(?<=patch_)\d+')
 			if [[ $patch_version -gt ${downgrades_versions[$base_name_with_patch]} ]]; then
-				new_version=$((patch_version - downgrades_to_remove["$base_name"] - 1))
+				new_version=$((patch_version - downgrades_to_remove["$base_name"]))
 				extension=$(get_extension "$mod")
 
 				new_patch="${base_name}.patch_${new_version}${extension}"
@@ -729,7 +729,7 @@ function mod_export() {
 
 	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { echo "No modpacks saved."; exit 1; }
 
-	if [[ silent == false ]]; then
+	if [[ $modpack_export == false ]]; then
 		echo -ne "Archive file will be saved to ${save_dir}/${archive_name}. Make? (Y/n): "
 		read -r confirm
 	fi

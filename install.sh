@@ -58,8 +58,8 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
 
     if [[ $latest_major -gt $installed_major ]]; then
         echo -e "${ORANGE}Warning:${NC} Major version upgrade detected."
-        echo "Check out the changelogs here:"
-        echo "https://github.com/v4n00/h2mm-cli/releases"
+        echo "${ORANGE}!${NC} Check out the changelogs here:"
+        echo "${ORANGE}!${NC} https://github.com/v4n00/h2mm-cli/releases"
         echo "The script will proceed to upgrade ${SCRIPT_NAME} to avoid breaking changes."
 
         # find hd2 path
@@ -80,13 +80,11 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
         [[ ! -f "$game_dir/mods.csv" ]] && { echo -e "${RED}Error:${NC} mods.csv not found in $game_dir."; exit 1; }
         
         # make backup of mods in case something goes wrong
-        echo "Creating a backup of mods.csv."
+        echo "${ORANGE}V${NC} It is advised to make a backup before proceeding."
         h2mm export
 
         # iterate from installed major number to latest major number
         for ((i = installed_major + 1; i <= latest_major; i++)); do
-            echo -e "Applying breaking changes patch for version $i."
-
             if [[ -n "${breaking_changes_patches[$i]}" ]]; then 
                 eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
             else

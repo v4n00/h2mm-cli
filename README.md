@@ -16,7 +16,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/head
 > Running this script will require sudo permissions. **DO NOT TRUST** random scripts from the internet. If you want to review the script before running it, check out the mod repository for yourself.
 
 If for some reason, the installation command doesn't work you can:
-1. Go to https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh
+
+1. Go to <https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh>
 1. Right click -> Save page as...
 1. Go to your downloads folders `cd ~/Downloads`
 1. Give the script execution permissions `chmod +x install.sh`
