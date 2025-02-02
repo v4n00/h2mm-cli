@@ -105,7 +105,13 @@ fi
 
 # Install
 
-IFS= read -ep "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " response
+# if installing on steam deck, prompt the user, set flag
+is_steam_deck=false
+IFS= read -ep "Are you installing on a Steam Deck? (y/N): " response_steam_deck
+[[ "$is_steam_deck" == "y" || "$is_steam_deck" == "Y" ]] && is_steam_deck=true
+
+# other path if needed
+[[ $is_steam_deck == false ]] && IFS= read -ep "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " response
 
 if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
     DESTINATION_PATH="$response"
