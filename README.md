@@ -93,7 +93,7 @@ The script is developed and tested on Arch Linux, but it should work on other Li
 Status of platforms:
 
 - Linux :white_check_mark:
-- Steam Deck - untested (should work) :grey_question:
+- Steam Deck :white_check_mark:
 - Windows - WSL :white_check_mark:
 
 > The script works on WSL, but you need to specify the path to the Helldivers 2 mods directory manually, to find your Windows partition head to `/mnt/` and from there go to your Helldivers 2 data directory, on a typical install it should be on `/mnt/c/Program\ Files\ \(x86\)/Steam/steamapps/common/Helldivers\ 2/data`. You also need to have `unzip` installed, which can be done by running `sudo apt install unzip`.

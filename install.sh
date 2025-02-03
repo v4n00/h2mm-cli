@@ -105,19 +105,33 @@ fi
 
 # Install
 
-# if installing on steam deck, prompt the user, set flag
-is_steam_deck=false
-IFS= read -ep "Are you installing on a Steam Deck? (y/N): " response_steam_deck
-[[ "$is_steam_deck" == "y" || "$is_steam_deck" == "Y" ]] && is_steam_deck=true
+# if steam deck, set destination path to ~/.local/bin
+IFS= read -ep "Are you installing on a Steam Deck? (y/N): " response_sd
+if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
+    # steam deck
+    DESTINATION_PATH="$HOME/.local/bin"
+    mkdir -p "$DESTINATION_PATH"
 
-# other path if needed
-[[ $is_steam_deck == false ]] && IFS= read -ep "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " response
+    # check if ~/.local/bin is in PATH
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        # add ~/.local/bin to PATH
+        echo -e "${ORANGE}Warning:${NC} Installing the script on a Steam Deck means adding $DESTINATION_PATH to your \$PATH."
+        echo -e "${ORANGE}Warning:${NC} If you're using a different shell, you may need to add it manually."
 
-if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
-    DESTINATION_PATH="$response"
-    if [[ ! -d "$DESTINATION_PATH" ]]; then
-        echo -e "${RED}Error:${NC} Path $DESTINATION_PATH does not exist."
-        exit 1
+        IFS= read -ep "Do you want to add $DESTINATION_PATH to your \$PATH in ~/.bashrc? (Y/n): " response
+        if [[ "$response" == "y" || "$response" = "Y" || -z "$response" ]]; then
+            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.bashrc"
+            echo -e "${GREEN}Success:${NC} Added $DESTINATION_PATH to your \$PATH in ~/.bashrc."
+        fi
+    fi
+else
+    # not steam deck
+    # set another path if needed
+    IFS= read -ep "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " response
+
+    if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
+        DESTINATION_PATH="$response"
+        [[ ! -d "$DESTINATION_PATH" ]] && { echo -e "${RED}Error:${NC} Path $DESTINATION_PATH does not exist."; exit 1; }
     fi
 fi
 
