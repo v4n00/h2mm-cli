@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.4"
+VERSION="0.3.2"
 
 # --- Globals ---
 
@@ -15,7 +15,6 @@ DB_FILE=""
 MODPACKS_FOLDER=""
 MODPACKS_DB_FILE=""
 
-LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 REPO_URL="https://github.com/v4n00/h2mm-cli"
 
@@ -305,16 +304,6 @@ function display_modpack_overwrite_help() {
 # Check for updates
 
 function check_for_updates() {
-	if [[ -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
-		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
-		if [[ "$(date +%Y-%m-%d)" > "$(date +%Y-%m-%d -d "$last_update + 3 days")" ]]; then
-			return
-		fi
-	else
-		echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
-		exit 0
-	fi
-
 	latest_version=$(curl -sS "$VERSION_URL")
 	if [[ $? -ne 0 ]]; then
 		echo "${RED}Error:${NC} Could not check for updates." >&2
@@ -323,10 +312,8 @@ function check_for_updates() {
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
 		echo -e "${RED}!${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
-		echo -e "${RED}!${NC} Run \"h2mm update\" to upgrade!" >&2
+		echo -e "${GREEN}>${NC} Run \"h2mm update\" to upgrade!" >&2
 	fi
-
-	echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
 }
 
 # Upgrade/downgrade logic
