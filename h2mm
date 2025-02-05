@@ -170,6 +170,7 @@ function display_help() {
 	echo "	modpack-overwrite			Overwrite a modpack by name (or index)."
 	echo "	modpack-reset				Reset all installed modpacks."
 	echo "	reset					Reset all installed mods."
+	echo "	update					Update h2mm to the latest version."
 	echo "	help					Display this help message."
 	echo "For more information on usage, use h2mm [command] --help."
 	echo "Basic Usage:"
@@ -322,13 +323,13 @@ function check_for_updates() {
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
 		echo -e "${RED}!${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
-		echo -e "${RED}!${NC} You can download it from: $REPO_URL" >&2
+		echo -e "${RED}!${NC} Run \"h2mm update\" to upgrade!" >&2
 	fi
 
 	echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
 }
 
-# Upgade/downgrade logic
+# Upgrade/downgrade logic
 
 function downgrade_mods() {
 	local files="$1"
@@ -1013,6 +1014,19 @@ function modpack_overwrite() {
 	sed -i "/^$modpack_index,/s/DISABLED/ENABLED/" "$MODPACKS_DB_FILE"
 }
 
+function self_update() {
+  latest_version=$(curl -sS "$VERSION_URL")
+  if [[ "$latest_version" == "$VERSION" ]]; then
+		echo -e "${GREEN}h2mm is already up-to-date.${NC}" >&2
+		exit 0
+	fi
+
+	echo -e "${GREEN}Updating${NC} h2mm from ${ORANGE}$VERSION${NC} to ${GREEN}$latest_version${NC}..." >&2
+
+	# Run the installer for the latest version
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+}
+
 # --- Main ---
 
 function main() {
@@ -1070,6 +1084,9 @@ function main() {
 		version|v|-v|--version)
 			echo "${VERSION}"
 			;;
+    update)
+      self_update
+      ;;
 		help|--help|-h|h)
 			display_help
 			;;
