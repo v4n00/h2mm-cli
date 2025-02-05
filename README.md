@@ -87,6 +87,9 @@ h2mm disable -i 1 # disable mod with index 1
 h2mm list
 ```
 
+#### Updating the tool
+Simply run `h2mm update` and the tool will guide you through updating it to the latest version.
+
 ## Compatibility
 
 The script is developed and tested on Arch Linux, but it should work on other Linux distributions as well. If you encounter any issues, please open an issue on the repository.
