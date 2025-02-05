@@ -47,6 +47,7 @@ h2mm
 - `modpack-overwrite` - Overwrite a modpack by name (or index).
 - `modpack-reset` - Reset all installed modpacks.
 - `reset` - Reset all installed mods.
+- `update` - Update h2mm to latest version.
 - `help` - Display this help message.
 
 ### Basic usage
