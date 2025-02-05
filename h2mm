@@ -1084,9 +1084,9 @@ function main() {
 		version|v|-v|--version)
 			echo "${VERSION}"
 			;;
-    update)
-      self_update
-      ;;
+		update)
+			self_update
+		;;
 		help|--help|-h|h)
 			display_help
 			;;
