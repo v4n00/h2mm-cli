@@ -47,6 +47,7 @@ h2mm
 - `modpack-overwrite` - Overwrite a modpack by name (or index).
 - `modpack-reset` - Reset all installed modpacks.
 - `reset` - Reset all installed mods.
+- `update` - Update h2mm to latest version.
 - `help` - Display this help message.
 
 ### Basic usage
@@ -86,6 +87,9 @@ h2mm disable -i 1 # disable mod with index 1
 h2mm list
 ```
 
+#### Updating the tool
+Simply run `h2mm update` and the tool will guide you through updating it to the latest version.
+
 ## Compatibility
 
 The script is developed and tested on Arch Linux, but it should work on other Linux distributions as well. If you encounter any issues, please open an issue on the repository.
@@ -118,6 +122,7 @@ You can use the short form of commands to save some time. The shortcuts are:
 - `mo` for `modpack-overwrite`
 - `mr` for `modpack-reset`
 - `r` for `reset`
+- `up` for `update`
 
 ### Modpacks support
 

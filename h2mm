@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.4"
+VERSION="0.3.3"
 
 # --- Globals ---
 
@@ -17,7 +17,6 @@ MODPACKS_DB_FILE=""
 
 LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
-REPO_URL="https://github.com/v4n00/h2mm-cli"
 
 # --- Utility Functions ---
 
@@ -100,7 +99,7 @@ function find_game_directory() {
 			echo "$saved_dir"
 			return
 		else
-			echo -e "${RED}!${NC} Saved game directory is invalid. Proceeding to get a new directory." >&2
+			echo -e "${RED}Error${NC}: Saved game directory is invalid. Proceeding to get a new directory." >&2
 		fi
 	fi
 
@@ -174,6 +173,7 @@ function display_help() {
 	echo "	modpack-overwrite			Overwrite a modpack by name (or index)."
 	echo "	modpack-reset				Reset all installed modpacks."
 	echo "	reset					Reset all installed mods."
+	echo "	update					Update h2mm to the latest version."
 	echo "	help					Display this help message."
 	echo "For more information on usage, use h2mm [command] --help."
 	echo "Basic Usage:"
@@ -310,11 +310,11 @@ function display_modpack_overwrite_help() {
 function check_for_updates() {
 	if [[ -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
 		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
-		if [[ "$(date +%Y-%m-%d)" > "$(date +%Y-%m-%d -d "$last_update + 3 days")" ]]; then
+		if [[ "$(date +%s)" -lt "$(date +%s -d "$last_update + 1 hour")" ]]; then
 			return
 		fi
 	else
-		echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
+		echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
 		exit 0
 	fi
 
@@ -325,14 +325,14 @@ function check_for_updates() {
 	fi
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
-		echo -e "${RED}!${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
-		echo -e "${RED}!${NC} You can download it from: $REPO_URL" >&2
+		echo -e "${ORANGE}Info:${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
+		echo -e "${ORANGE}Info:${NC} Run \"h2mm update\" to update." >&2
 	fi
 
-	echo $(date +%Y-%m-%d) > "$LAST_CHECKED_UPDATE_FILE"
+	echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
 }
 
-# Upgade/downgrade logic
+# Upgrade/downgrade logic
 
 function downgrade_mods() {
 	local files="$1"
@@ -1021,6 +1021,20 @@ function modpack_overwrite() {
 	sed -i "/^$modpack_index,/s/DISABLED/ENABLED/" "$MODPACKS_DB_FILE"
 }
 
+function self_update() {
+	latest_version=$(curl -sS "$VERSION_URL")
+
+	if [[ "$latest_version" == "$VERSION" ]]; then
+		echo -e "h2mm is already up-to-date." >&2
+		exit 0
+	fi
+
+	echo -e "Starting update script..." >&2
+
+	# Run the installer for the latest version
+	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+}
+
 # --- Main ---
 
 function main() {
@@ -1077,6 +1091,9 @@ function main() {
 			;;
 		version|v|-v|--version)
 			echo "${VERSION}"
+			;;
+		update|up)
+			self_update
 			;;
 		help|--help|-h|h)
 			display_help
