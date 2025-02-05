@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.4"
+VERSION="0.3.3"
 
 # --- Globals ---
 
@@ -95,7 +95,7 @@ function find_game_directory() {
 			echo "$saved_dir"
 			return
 		else
-			echo -e "${RED}!${NC} Saved game directory is invalid. Proceeding to get a new directory." >&2
+			echo -e "${RED}Error${NC}: Saved game directory is invalid. Proceeding to get a new directory." >&2
 		fi
 	fi
 
@@ -321,8 +321,8 @@ function check_for_updates() {
 	fi
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
-		echo -e "${RED}!${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
-		echo -e "${RED}!${NC} Run \"h2mm update\" to update!" >&2
+		echo -e "${ORANGE}Info:${NC} A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC}" >&2
+		echo -e "${ORANGE}Info:${NC} Run \"h2mm update\" to update." >&2
 	fi
 
 	echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
@@ -1015,12 +1015,13 @@ function modpack_overwrite() {
 
 function self_update() {
 	latest_version=$(curl -sS "$VERSION_URL")
+
 	if [[ "$latest_version" == "$VERSION" ]]; then
-		echo -e "${GREEN}h2mm is already up-to-date.${NC}" >&2
+		echo -e "h2mm is already up-to-date." >&2
 		exit 0
 	fi
 
-	echo -e "${GREEN}Updating${NC} h2mm from ${ORANGE}$VERSION${NC} to ${GREEN}$latest_version${NC}..." >&2
+	echo -e "Starting update script..." >&2
 
 	# Run the installer for the latest version
 	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
