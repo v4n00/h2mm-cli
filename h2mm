@@ -16,7 +16,6 @@ MODPACKS_FOLDER=""
 MODPACKS_DB_FILE=""
 
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
-REPO_URL="https://github.com/v4n00/h2mm-cli"
 
 # --- Utility Functions ---
 
