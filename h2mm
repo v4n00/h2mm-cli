@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.3"
+VERSION="0.3.4"
 
 # --- Globals ---
 
@@ -113,6 +113,7 @@ function find_game_directory() {
 	fi
 
 	# save path
+	mkdir -p "$(dirname "$H2PATH")"
 	echo "$game_dir" > "$H2PATH"
 
 	[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not save game directory." >&2; exit 1; }
