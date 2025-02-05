@@ -63,8 +63,12 @@ function get_mod_name_and_index() {
 	fi
 
 	if [[ -z "$entry" || -z "$mod_index" || -z "$mod_name" ]]; then
-		echo -e "${RED}Error${NC}: Mod not found." >&2
-		exit 1
+		if [[ -n "$do_not_exit" ]]; then
+			mod_index=-1
+		else
+			echo -e "${RED}Error${NC}: Mod not found." >&2
+			exit 1
+		fi
 	fi
 
 	status=$(echo "$entry" | awk -F, '{print $2}')
@@ -663,6 +667,15 @@ function mod_install() {
 	
 	# verify minimum information required
 	[[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]] && { echo -e "${RED}Error${NC}: Mod name and files are required." >&2; exit 1; }
+
+	do_not_exit="not an empty string"
+	get_mod_name_and_index "$mod_name" "$do_not_exit"
+	unset do_not_exit
+
+	if [[ $mod_index -ne -1 ]]; then
+		echo -e "${RED}Error${NC}: The mod '$mod_name' is already installed.";
+		exit 1;
+	fi
 
 	# verify mod files exist
 	for file in "${mod_files[@]}"; do
