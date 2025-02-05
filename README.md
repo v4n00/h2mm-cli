@@ -4,9 +4,9 @@ Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers
 
 This script is complete, the version will always [remain at 0.x.x](https://0ver.org/)
 
-## Installation and updating
+## Installation
 
-To install/update Helldivers 2 Mod Manager CLI run the following command in your terminal:
+To install Helldivers 2 Mod Manager CLI run the following command in your terminal:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
@@ -87,8 +87,11 @@ h2mm disable -i 1 # disable mod with index 1
 h2mm list
 ```
 
-#### Updating the tool
-Simply run `h2mm update` and the tool will guide you through updating it to the latest version.
+#### Updating the script
+
+```bash
+h2mm update
+```
 
 ## Compatibility
 
