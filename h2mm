@@ -458,7 +458,7 @@ function mod_disable() {
 	fi
 
 	# find mod files
-	get_mod_name_and_index "$mod_name" "$mod_index"
+	get_mod_name_and_index
 	
 	if [[ "$status" == "DISABLED" ]]; then
 		echo -e "${RED}Error${NC}: Mod $mod_name is already disabled." >&2
@@ -518,7 +518,7 @@ function mod_enable() {
 	[[ -z "$mod_name" && -z "$mod_index" ]] && { echo -e "${RED}Error${NC}: Mod name or index is required to enable." >&2; exit 1; }
 
 	# find mod files
-	get_mod_name_and_index "$mod_name" "$mod_index"
+	get_mod_name_and_index
 
 	[[ "$status" == "ENABLED" ]] && { echo -e "${RED}Error${NC}: Mod $mod_name is already enabled." >&2; exit 1; }
 
@@ -666,12 +666,9 @@ function mod_install() {
 	# verify minimum information required
 	[[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]] && { echo -e "${RED}Error${NC}: Mod name and files are required." >&2; exit 1; }
 
-	get_mod_name_and_index "--do-not-exit" "$mod_name" "$do_not_exit"
-
-	if [[ $mod_index -ne -1 ]]; then
-		echo -e "${RED}Error${NC}: The mod '$mod_name' is already installed.";
-		exit 1;
-	fi
+	# verify duplicate mod names
+	get_mod_name_and_index --do-not-exit
+	[[ $mod_index -ne -1 ]] && { echo -e "${RED}Error${NC}: The mod '$mod_name' is already installed."; exit 1; }
 
 	# verify mod files exist
 	for file in "${mod_files[@]}"; do
@@ -747,7 +744,7 @@ function mod_uninstall() {
 	[[ -z "$mod_name" && -z "$mod_index" ]] && { echo -e "${RED}Error${NC}: Mod name or index is required to uninstall." >&2; exit 1; }
 
 	# find mod files
-	get_mod_name_and_index "$mod_name" "$mod_index"
+	get_mod_name_and_index
 
 	# delete mod files
 	files=$(get_files_by_entry_from_db "$entry")
