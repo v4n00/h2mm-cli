@@ -1086,7 +1086,7 @@ function main() {
 			;;
 		update)
 			self_update
-		;;
+			;;
 		help|--help|-h|h)
 			display_help
 			;;
