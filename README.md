@@ -119,6 +119,7 @@ You can use the short form of commands to save some time. The shortcuts are:
 - `mo` for `modpack-overwrite`
 - `mr` for `modpack-reset`
 - `r` for `reset`
+- `up` for `update`
 
 ### Modpacks support
 
