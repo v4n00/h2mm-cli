@@ -308,7 +308,7 @@ function display_modpack_overwrite_help() {
 function check_for_updates() {
 	if [[ -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
 		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
-		if [[ $(date +%Y-%m-%d) -gt $(date +%Y-%m-%d -d "$last_update + 3 days") ]]; then
+		if [[ "$(date +%Y-%m-%d)" > "$(date +%Y-%m-%d -d "$last_update + 3 days")" ]]; then
 			return
 		fi
 	else
