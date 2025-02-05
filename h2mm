@@ -1015,8 +1015,8 @@ function modpack_overwrite() {
 }
 
 function self_update() {
-  latest_version=$(curl -sS "$VERSION_URL")
-  if [[ "$latest_version" == "$VERSION" ]]; then
+	latest_version=$(curl -sS "$VERSION_URL")
+	if [[ "$latest_version" == "$VERSION" ]]; then
 		echo -e "${GREEN}h2mm is already up-to-date.${NC}" >&2
 		exit 0
 	fi
@@ -1024,7 +1024,7 @@ function self_update() {
 	echo -e "${GREEN}Updating${NC} h2mm from ${ORANGE}$VERSION${NC} to ${GREEN}$latest_version${NC}..." >&2
 
 	# Run the installer for the latest version
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 }
 
 # --- Main ---
