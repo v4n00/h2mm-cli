@@ -45,7 +45,7 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
 
     latest_version=$(curl -sS "$REPO_URL"/version)
     if [[ "$latest_version" == "$installed_version" ]]; then
-        echo -e "You are reinstalling version $installed_version."
+        echo -e "You are reinstalling version ${GREEN}$installed_version${NC}."
     else
         echo -e "You are upgrading from ${ORANGE}$installed_version${NC} -> ${GREEN}$latest_version${NC}."
     fi
