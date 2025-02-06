@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.5"
+VERSION="0.3.6"
 
 # --- Globals ---
 
@@ -121,7 +121,7 @@ function find_game_directory() {
 
 	[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not save game directory." >&2; exit 1; }
 	echo -e "Game directory ${GREEN}saved${NC}: $game_dir" >&2
-	
+
 	# return the directory
 	echo "$game_dir"
 }
@@ -378,7 +378,7 @@ function downgrade_mods() {
 
 				[[ $? -ne 0 ]] && { echo -e "${RED}Error${NC}: Could not downgrade mod file $mod." >&2; exit 1; }
 				echo -e "Downgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}." >&2
-				
+
 				# save changes in database as well
 				sed -i "s/\(\b$mod\b\)/$new_patch/" "$DB_FILE"
 			fi
@@ -459,7 +459,7 @@ function mod_disable() {
 
 	# find mod files
 	get_mod_name_and_index
-	
+
 	if [[ "$status" == "DISABLED" ]]; then
 		echo -e "${RED}Error${NC}: Mod $mod_name is already disabled." >&2
 		exit 1
@@ -627,7 +627,7 @@ function mod_install() {
 		mod_install "${mod_zip[0]}"
 		mod_zip=("${mod_zip[@]:1}")
 	done
-	
+
 	# extract the zip file and pass it to mod dirs
 	if [[ -n "$mod_zip" ]]; then
 		command -v unzip &> /dev/null || { echo -e "${RED}Error${NC}: unzip package is not installed." >&2; exit 1; }
@@ -662,7 +662,7 @@ function mod_install() {
 			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
 		fi
 	fi
-	
+
 	# verify minimum information required
 	[[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]] && { echo -e "${RED}Error${NC}: Mod name and files are required." >&2; exit 1; }
 
@@ -690,7 +690,7 @@ function mod_install() {
 
 		# set patch count for file name if it doesn't exist yet
 		if [[ -z "${patch_count[$file]+unset}" ]]; then
-			patch_count["$file"]=$count 
+			patch_count["$file"]=$count
 		fi
 		# if the file has an extension (e.g. .stream, .gpu_resources), set the last patch number for the next step
 		patch_count["$base_name"]=$count
@@ -702,7 +702,7 @@ function mod_install() {
 		else
 			target_file="${base_name}.patch_${patch_count[$file]}"
 		fi
-		
+
 		target_files+=($target_file)
 		cp "$file" "$MODS_DIR/$target_file"
 
@@ -764,7 +764,7 @@ function mod_uninstall() {
 	# remove entry from database
 	sed -i "/^$mod_index,/d" "$DB_FILE"
 	echo -e "Mod $mod_name ${ORANGE}uninstalled${NC} successfully." >&2
-	
+
 	# disable any modpack
 	disable_all_modpacks
 }

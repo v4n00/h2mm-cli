@@ -46,8 +46,8 @@ h2mm
 - `modpack-delete` - Delete a modpack by name (or index).
 - `modpack-overwrite` - Overwrite a modpack by name (or index).
 - `modpack-reset` - Reset all installed modpacks.
-- `reset` - Reset all installed mods.
 - `update` - Update h2mm to latest version.
+- `reset` - Reset all installed mods.
 - `help` - Display this help message.
 
 ### Basic usage
@@ -62,7 +62,7 @@ h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory w
 h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
 
-> [!NOTE]  
+> [!NOTE]
 > If the mod has more than 1 variant, you need to install the one you want by unarchiving it separately and providing the directory.
 
 #### Uninstall a mod
@@ -124,8 +124,8 @@ You can use the short form of commands to save some time. The shortcuts are:
 - `md` for `modpack-delete`
 - `mo` for `modpack-overwrite`
 - `mr` for `modpack-reset`
-- `r` for `reset`
 - `up` for `update`
+- `r` for `reset`
 
 ### Modpacks support
 
