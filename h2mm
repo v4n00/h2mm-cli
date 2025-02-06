@@ -748,6 +748,7 @@ function mod_uninstall() {
 
 	# delete mod files
 	files=$(get_files_by_entry_from_db "$entry")
+
 	for file in $files; do
 		[[ ! -f "$MODS_DIR/$file" ]] && { echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2; exit 1; }
 
@@ -758,7 +759,7 @@ function mod_uninstall() {
 	done
 
 	# downgrade mods with greater version number, only if the mod is enabled
-	[[ $disabled == false ]] && downgrade_mods "$files"
+	[[ "$status" == "ENABLED" ]] && downgrade_mods "$files"
 
 	# remove entry from database
 	sed -i "/^$mod_index,/d" "$DB_FILE"
