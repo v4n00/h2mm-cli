@@ -135,12 +135,24 @@ else
 fi
 
 echo "Installing $SCRIPT_NAME to $DESTINATION_PATH."
-sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
-sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+if [ -r "$DESTINATION_PATH" ]; then
+    curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
+    chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+else
+    sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
+    sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+fi
 
+    
 if [[ ! -x "$(command -v $SCRIPT_NAME)" ]]; then
     echo -e "${RED}Error:${NC} Installation failed."
     exit 1
 fi
 
 echo "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME. Use it by running '$SCRIPT_NAME'."
+if ! which h2mm > /dev/null; then
+    echo -e "!!! ${RED}WARNING${NC} !!!"
+    echo -e "Helldivers 2 Mod Manager CLI was ${RED} NOT ${RED} found in your PATH."
+    echo -e "Correct this if you want to use it as intended"
+    echo -e "!!! ${RED}WARNING${NC} !!!"
+fi
