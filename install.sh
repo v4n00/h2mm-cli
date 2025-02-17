@@ -135,11 +135,17 @@ else
 fi
 
 echo "Installing $SCRIPT_NAME to $DESTINATION_PATH."
-sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
-sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+if [ -r "$DESTINATION_PATH" ]; then
+    curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
+    chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+else
+    sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
+    sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+fi
+
 
 if [[ ! -x "$(command -v $SCRIPT_NAME)" ]]; then
-    echo -e "${RED}Error:${NC} Installation failed."
+    echo -e "${RED}Error:${NC} Installation failed. Mod manager was not found in PATH."
     exit 1
 fi
 
