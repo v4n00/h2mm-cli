@@ -109,7 +109,8 @@ function find_game_directory() {
 
 	if [[ -z "$game_dir" ]]; then
 		echo "Could not find the Helldivers 2 data directory automatically." >&2
-		IFS= read -ep "Please enter the path to the Helldivers 2 data directory: " game_dir
+		echo -ne "Please enter the path to the Helldivers 2 data directory:" >&2
+		IFS= read -e game_dir
 		game_dir="$(realpath "${game_dir/#\~/$HOME}")"
 
 		[[ ! -d "$game_dir" ]] && { echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2; exit 1; }
@@ -159,21 +160,21 @@ function display_help() {
 	echo "Helldivers 2 Mod Manager v${VERSION}"
 	echo "Usage: h2mm [command] [options]"
 	echo "Commands:"
-	echo "	install					Install a mod by the file provided (directory, zip, patch)."
-	echo "	uninstall				Uninstall a mod by name (or index)."
-	echo "	list					List all installed mods."
-	echo "	enable					Enable a mod by name (or index)."
-	echo "	disable					Disable a mod by name (or index)."
-	echo "	export					Export installed mods to a zip file."
-	echo "	import					Import mods from a zip file."
-	echo "	modpack-create				Create a modpack from the currently installed mods."
-	echo "	modpack-switch				Switch to a modpack by name (or index)."
-	echo "	modpack-list				List all installed modpacks."
-	echo "	modpack-delete				Delete a modpack by name (or index)."
-	echo "	modpack-overwrite			Overwrite a modpack by name (or index)."
-	echo "	modpack-reset				Reset all installed modpacks."
-	echo "	reset					Reset all installed mods."
-	echo "	update					Update h2mm to the latest version."
+	echo "	i, install					Install a mod by the file provided (directory, zip, patch)."
+	echo "	u, uninstall				Uninstall a mod by name (or index)."
+	echo "	l, list					List all installed mods."
+	echo "	e, enable					Enable a mod by name (or index)."
+	echo "	d, disable					Disable a mod by name (or index)."
+	echo "	ex, export					Export installed mods to a zip file."
+	echo "	im, import					Import mods from a zip file."
+	echo "	mc, modpack-create				Create a modpack from the currently installed mods."
+	echo "	ms, modpack-switch				Switch to a modpack by name (or index)."
+	echo "	ml, modpack-list				List all installed modpacks."
+	echo "	mc, modpack-delete				Delete a modpack by name (or index)."
+	echo "	mo, modpack-overwrite			Overwrite a modpack by name (or index)."
+	echo "	mr, modpack-reset				Reset all installed modpacks."
+	echo "	up, update					Update h2mm to the latest version."
+	echo "	r, reset					Reset all installed mods."
 	echo "	help					Display this help message."
 	echo "For more information on usage, use h2mm [command] --help."
 	echo "Basic Usage:"
@@ -564,7 +565,7 @@ function mod_reset() {
 	local without_modpacks=false
 	[[ "$1" == "--without-modpacks" ]] && without_modpacks=true
 
-	echo -ne "Are you sure you want to ${RED}reset${NC} all installed mods? (Y/n): "
+	echo -ne "Are you sure you want to ${RED}reset${NC} all installed mods? (Y/n): " >&2
 	read -r confirm
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		rm -f "$MODS_DIR"/*.patch_*
@@ -799,7 +800,7 @@ function mod_export() {
 	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { echo "No modpacks saved."; exit 1; }
 
 	if [[ $modpack_export == false ]]; then
-		echo -ne "Archive file will be saved to ${save_dir}/${archive_name}. Make? (Y/n): "
+		echo -ne "Archive file will be saved to ${save_dir}/${archive_name}. Make? (Y/n): " >&2
 		read -r confirm
 	fi
 	if [[ silent == true || "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
@@ -936,7 +937,10 @@ function modpack_reset() {
 
 	[[ "$1" == "--force" ]] && force=true
 
-    [[ force == false ]] && read -p "Are you sure you want to reset all installed modpacks? (Y/n): " confirm
+    if [[ force == false ]]; then
+		echo -ne "Are you sure you want to ${RED}reset${NC} all installed modpacks? (Y/n): " >&2
+		read confirm
+	fi
 	if [[ force == true || "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		rm -f "$MODPACKS_FOLDER"/*.tar.gz
 		rm -f "$MODPACKS_DB_FILE"
