@@ -9,12 +9,12 @@ GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
 NC='\033[0m'
 
-H2PATH="${HOME}/.config/h2mm/h2path"
 MODS_DIR=""
 DB_FILE=""
 MODPACKS_FOLDER=""
 MODPACKS_DB_FILE=""
 
+H2PATH="${HOME}/.config/h2mm/h2path"
 LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 
@@ -1080,6 +1080,7 @@ function self_update() {
 
 	# Run the installer for the latest version
 	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
+	exit 1
 }
 
 # --- Main ---
