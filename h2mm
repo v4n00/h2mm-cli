@@ -681,13 +681,18 @@ function mod_install() {
 	# prompt the user to choose which variant to install, or install multiple
 	readarray -d '' all_dirs < <(find "$mod_dir" -mindepth 1 -type d -print0)
 
-	# filter so that all_dirs only contains directories that have *.patch_* files inside them
-	all_dirs=($(for dir in "${all_dirs[@]}"; do [[ -n $(find "$dir" -type f -name "*.patch_*" -print -quit) ]] && echo "$dir"; done))
+	# filter so that we only have dirs that have *.patch_* files inside them
+	filtered_dirs=()
+	for dir in "${all_dirs[@]}"; do
+		if find "$dir" -maxdepth 1 -type f -name "*.patch_*" -print -quit | grep -q .; then
+			filtered_dirs+=("$dir")
+		fi
+	done
 
-	if [[ ${#all_dirs[@]} -gt 1 ]]; then
+	if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
 		echo -e "Multiple mod variants found for mod ${mod_name}." >&2
-		for i in "${!all_dirs[@]}"; do
-			echo "$((i + 1)). ${all_dirs[$i]}"
+		for i in "${!filtered_dirs[@]}"; do
+			echo "$((i + 1)). ${filtered_dirs[$i]}"
 		done
 
 		# prompt user to choose
@@ -700,9 +705,14 @@ function mod_install() {
 			# get the files from the chosen variant
 			for index in "${variant_indices[@]}"; do
 				[[ ! "$index" =~ ^[0-9]+$ ]] && { echo -e "${RED}Error${NC}: Invalid variant index." >&2; exit 1; }
-				[[ $index -lt 1 || $index -gt ${#all_dirs[@]} ]] && { echo -e "${RED}Error${NC}: Variant index out of range." >&2; exit 1; }
+				[[ $index -lt 1 || $index -gt ${#filtered_dirs[@]} ]] && { echo -e "${RED}Error${NC}: Variant index out of range." >&2; exit 1; }
 
-				readarray -d '' variant_files < <(find "${all_dirs[$((index - 1))]}" -type f -name "*.patch_*" -print0)
+				readarray -d '' variant_files < <(find "${filtered_dirs[$((index - 1))]}" -type f -name "*.patch_*" -print0)
+
+				# update mod_name to contain the variant name
+				mod_name="${mod_name} [$(basename "${filtered_dirs[$((index - 1))]}")]"
+
+				# add the files to the mod_files array
 				mod_files+=("${variant_files[@]}")
 			done
 		fi
