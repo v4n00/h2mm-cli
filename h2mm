@@ -1095,55 +1095,55 @@ function main() {
 	check_for_updates
 
 	case "$command" in
-		install|i)
+		"install"|"i")
 			mod_install "$@"
 			;;
-		list|l)
+		"list"|"l")
 			mod_list "$@"
 			;;
-		uninstall|u)
+		"uninstall"|"u")
 			mod_uninstall "$@"
 			;;
-		enable|e)
+		"enable"|"e")
 			mod_enable "$@"
 			;;
-		disable|d)
+		"disable"|"d")
 			mod_disable "$@"
 			;;
-		export|ex)
+		"export"|"ex")
 			mod_export "$@"
 			;;
-		import|im)
+		"import"|"im")
 			mod_import "$@"
 			;;
-		modpack-list|ml)
+		"modpack-list"|"ml")
 			modpack_list "$@"
 			;;
-		modpack-create|mc)
+		"modpack-create"|"mc")
 			modpack_create "$@"
 			;;
-		modpack-delete|md)
+		"modpack-delete"|"md")
 			modpack_delete "$@"
 			;;
-		modpack-overwrite|mo)
+		"modpack-overwrite"|"mo")
 			modpack_overwrite "$@"
 			;;
-		modpack-switch|ms)
+		"modpack-switch"|"ms")
 			modpack_switch "$@"
 			;;
-		modpack-reset|mr)
+		"modpack-reset"|"mr")
 			modpack_reset "$@"
 			;;
-		reset|r)
+		"reset"|"r")
 			mod_reset "$@"
 			;;
-		version|v|-v|--version)
+		"version"|"v"|"-v"|"--version")
 			echo "${VERSION}"
 			;;
-		update|up)
+		"update"|"up")
 			self_update
 			;;
-		help|--help|-h|h)
+		"help"|"--help"|"-h"|"h")
 			display_help
 			;;
 		*)
