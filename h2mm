@@ -1080,7 +1080,7 @@ function self_update() {
 
 	# Run the installer for the latest version
 	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
-	exit 1
+	exit 0
 }
 
 # --- Main ---
