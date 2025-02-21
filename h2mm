@@ -692,7 +692,7 @@ function mod_install() {
 	if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
 		echo -e "Multiple mod variants found for mod ${mod_name}." >&2
 		for i in "${!filtered_dirs[@]}"; do
-			echo "$((i + 1)). $(basename ${filtered_dirs[$i]})" >&2
+			echo "$((i + 1)). $(basename "${filtered_dirs[$i]}")" >&2
 		done
 
 		# prompt user to choose
