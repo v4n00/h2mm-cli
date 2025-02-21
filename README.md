@@ -62,9 +62,6 @@ h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory w
 h2mm install -n "Example mod" mod* # using a wildcard to include all files
 ```
 
-> [!NOTE]
-> If the mod has more than 1 variant, you need to install the one you want by unarchiving it separately and providing the directory.
-
 #### Uninstall a mod
 
 ```bash
