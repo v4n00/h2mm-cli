@@ -12,8 +12,7 @@ REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
 
 # --- Main ---
 
-# Warning
-
+# warning
 echo -e "!!! ${RED}WARNING${NC} !!!" >&2
 echo -e "This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME." >&2
 echo -e "Running this script will require sudo permissions. ${RED}DO NOT TRUST${NC} random scripts from the internet." >&2
@@ -22,17 +21,14 @@ echo -e "https://github.com/v4n00/h2mm-cli" >&2
 echo -e "!!! ${RED}WARNING${NC} !!!" >&2
 echo >&2
 
-# Check if update
-
-# Breaking changes hash table
-
+# check if update
+# breaking changes hash table
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
     ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
 )
 
-# Handle breaking changes
-
+# handle breaking changes
 if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
     installed_version=$($SCRIPT_NAME --version)
     # version 1 show the help message, if the first character is not a 0, store installed version as 0.1.6
@@ -94,8 +90,6 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
     echo
 fi
 
-# Install
-
 # if steam deck, set destination path to ~/.local/bin
 echo -ne "Are you installing on a Steam Deck? (y/N): " >&2
 IFS= read -e response_sd
@@ -130,10 +124,10 @@ else
     fi
 fi
 
+# install
 echo -e "Installing $SCRIPT_NAME to $DESTINATION_PATH." >&2
 sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
 sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
 
 [[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { echo -e "${RED}Error:${NC} Installation failed. Mod manager was not found in \$PATH." >&2; exit 1; }
-
 echo "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME. Use it by running '$SCRIPT_NAME'." >&2
