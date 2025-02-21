@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.7"
+VERSION="0.3.8"
 
 # --- Globals ---
 
@@ -692,7 +692,7 @@ function mod_install() {
 	if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
 		echo -e "Multiple mod variants found for mod ${mod_name}." >&2
 		for i in "${!filtered_dirs[@]}"; do
-			echo "$((i + 1)). ${filtered_dirs[$i]}"
+			echo "$((i + 1)). $(basename ${filtered_dirs[$i]})" >&2
 		done
 
 		# prompt user to choose
