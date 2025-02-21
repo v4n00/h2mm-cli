@@ -676,6 +676,38 @@ function mod_install() {
 		[[ ! -f "$file" ]] && { echo -e "${RED}Error${NC}: Mod file $file does not exist." >&2; exit 1; }
 	done
 
+	# check for mod variants and handle
+	# if the mod directory contains more than 1 directory, it means there are multiple variants for the mod
+	# prompt the user to choose which variant to install, or install multiple
+	readarray -d '' all_dirs < <(find "$mod_dir" -mindepth 1 -type d -print0)
+
+	# filter so that all_dirs only contains directories that have *.patch_* files inside them
+	all_dirs=($(for dir in "${all_dirs[@]}"; do [[ -n $(find "$dir" -type f -name "*.patch_*" -print -quit) ]] && echo "$dir"; done))
+
+	if [[ ${#all_dirs[@]} -gt 1 ]]; then
+		echo -e "Multiple mod variants found for mod ${mod_name}." >&2
+		for i in "${!all_dirs[@]}"; do
+			echo "$((i + 1)). ${all_dirs[$i]}"
+		done
+
+		# prompt user to choose
+		echo -ne "Enter the number of the variant(s) to install (separated by space) or press Enter to install all: " >&2
+		read -a variant_indices
+		if [[ -n "${variant_indices[0]}" ]]; then
+			# clear mod_files
+			mod_files=()
+
+			# get the files from the chosen variant
+			for index in "${variant_indices[@]}"; do
+				[[ ! "$index" =~ ^[0-9]+$ ]] && { echo -e "${RED}Error${NC}: Invalid variant index." >&2; exit 1; }
+				[[ $index -lt 1 || $index -gt ${#all_dirs[@]} ]] && { echo -e "${RED}Error${NC}: Variant index out of range." >&2; exit 1; }
+
+				readarray -d '' variant_files < <(find "${all_dirs[$((index - 1))]}" -type f -name "*.patch_*" -print0)
+				mod_files+=("${variant_files[@]}")
+			done
+		fi
+	fi
+
 	# hash table - in case multiple named files are needed for 1 mod install, store the patch count
 	declare -A patch_count
 	# store the target files so we can put them in the database later
