@@ -10,18 +10,38 @@ DESTINATION_PATH="/usr/local/bin"
 SCRIPT_NAME="h2mm"
 REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
 
+function log() {
+	local type="$1"
+	shift
+	case "$type" in
+		INFO)
+			echo -e "$*" >&2
+			;;
+		ERROR)
+			log ERROR "$*" >&2
+			;;
+		PROMPT)
+			echo -ne "$*" >&2
+			;;
+	esac
+}
+
 # --- Main ---
 
 # warning
-echo -e "!!! ${RED}WARNING${NC} !!!" >&2
-echo -e "This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME." >&2
-echo -e "Running this script will require sudo permissions. ${RED}DO NOT TRUST${NC} random scripts from the internet." >&2
-echo -e "If you want to review the script before running it, check out the mod repository for yourself:" >&2
-echo -e "https://github.com/v4n00/h2mm-cli" >&2
-echo -e "!!! ${RED}WARNING${NC} !!!" >&2
-echo >&2
+
+cat << EOF
+!!! WARNING !!!
+This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME.
+Running this script will require sudo permissions. DO NOT TRUST random scripts from the internet.
+If you want to review the script before running it, check out the mod repository for yourself:
+https://github.com/v4n00/h2mm-cli
+!!! WARNING !!!
+
+EOF
 
 # check if update
+
 # breaking changes hash table
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
@@ -36,9 +56,9 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
 
     latest_version=$(curl -sS "$REPO_URL"/version)
     if [[ "$latest_version" == "$installed_version" ]]; then
-        echo -e "You are reinstalling version ${GREEN}$installed_version${NC}." >&2
+        log INFO "You are reinstalling version ${GREEN}$installed_version${NC}."
     else
-        echo -e "You are upgrading from ${ORANGE}$installed_version${NC} -> ${GREEN}$latest_version${NC}." >&2
+        log INFO "You are upgrading from ${ORANGE}$installed_version${NC} -> ${GREEN}$latest_version${NC}."
     fi
 
     # split version numbers
@@ -48,50 +68,50 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
     IFS='.' read -r _1 latest_major _2 <<< "$latest_version"
 
     if [[ $latest_major -gt $installed_major ]]; then
-        echo -e "${ORANGE}Warning:${NC} Major version upgrade detected." >&2
-        echo -e "${ORANGE}Info${NC}: Check out the changelogs here -> https://github.com/v4n00/h2mm-cli/releases" >&2
-        echo -e "The script will proceed to upgrade ${SCRIPT_NAME} to avoid breaking changes." >&2
+        log INFO "Major version upgrade detected."
+        log INFO "Check out the changelogs here -> https://github.com/v4n00/h2mm-cli/releases"
+        log INFO "The script will proceed to upgrade the database file to avoid breaking changes."
 
         # find hd2 path
         search_dir="${HOME}"
         target_dir="Steam/steamapps/common/Helldivers\ 2/data"
-        echo "Searching for the Helldivers 2 data directory... (20 seconds timeout)" >&2
+        log INFO "Searching for the Helldivers 2 data directory... (20 seconds timeout)"
 
         game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
         if [[ -z "$game_dir" ]]; then
-			echo "Could not find the Helldivers 2 data directory automatically." >&2
-			echo -ne "Please enter the path to the Helldivers 2 data directory: " >&2
+			log INFO "Could not find the Helldivers 2 data directory automatically."
+			log PROMPT "Please enter the path to the Helldivers 2 data directory: "
 			IFS= read -e game_dir
 			if [[ ! -d "$game_dir" ]]; then
-				echo -e "${RED}Error${NC}: Provided path is not a valid directory." >&2
+				log ERROR "Provided path is not a valid directory."
 				exit 1
 			fi
 		fi
 
-        [[ ! -f "$game_dir/mods.csv" ]] && { echo -e "${RED}Error:${NC} mods.csv not found in $game_dir." >&2; exit 1; }
+        [[ ! -f "$game_dir/mods.csv" ]] && { log ERROR "mods.csv not found in $game_dir." ; exit 1; }
 
         # iterate from installed major number to latest major number
         for ((i = installed_major + 1; i <= latest_major; i++)); do
             if [[ -n "${breaking_changes_patches[$i]}" ]]; then
                 eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
             else
-                echo "No breaking changes for version $i." >&2
+                log INFO "No breaking changes for version $i."
             fi
             if [[ $? -ne 0 ]]; then
-                echo -ne "${RED}Error:${NC} Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): " >&2
+                log ERROR "Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
                 read -er response
 
-                [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { echo "Exiting. Uninstall the script first the retry the install script." >&2; exit 1; }
+                [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting. Uninstall the script, then retry the install script." ; exit 1; }
             else
-                echo -e "Breaking changes patch for version ${ORANGE}$i${NC} applied ${GREEN}successfully${NC}." >&2
+                log INFO "Breaking changes patch for version ${ORANGE}$i${NC} applied ${GREEN}successfully${NC}."
             fi
         done
     fi
-    echo
+    log INFO ""
 fi
 
 # if steam deck, set destination path to ~/.local/bin
-echo -ne "Are you installing on a Steam Deck? (y/N): " >&2
+log PROMPT "Are you installing on a Steam Deck? (y/N): "
 IFS= read -e response_sd
 
 if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
@@ -102,32 +122,34 @@ if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
     # check if ~/.local/bin is in PATH
     if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
         # add ~/.local/bin to PATH
-        echo -e "${ORANGE}Warning:${NC} Installing the script on a Steam Deck means adding $DESTINATION_PATH to your \$PATH." >&2
-        echo -e "${ORANGE}Warning:${NC} If you're using a different shell than bash, you may need to add it manually." >&2
+        log INFO "Installing the script on a Steam Deck means adding $DESTINATION_PATH to your \$PATH."
+        log INFO "If you're using a different shell than bash, you may need to add it manually."
 
-		echo -ne "Do you want to add $DESTINATION_PATH to your \$PATH in ~/.bashrc? (Y/n): " >&2
+		log PROMPT "Do you want to add $DESTINATION_PATH to your \$PATH in ~/.bashrc? (Y/n): "
         IFS= read -e response
         if [[ "$response" == "y" || "$response" = "Y" || -z "$response" ]]; then
             echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.bashrc"
-            echo -e "${GREEN}Success:${NC} Added $DESTINATION_PATH to your \$PATH in ~/.bashrc." >&2
+
+			[[ $? -ne 0 ]] && { log ERROR "Failed to add $DESTINATION_PATH to \$PATH in ~/.bashrc." ; exit 1; }
+            log INFO "Added $DESTINATION_PATH to your \$PATH in ~/.bashrc."
         fi
     fi
 else
     # not steam deck
     # set another path if needed
-	echo -ne "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): " >&2
+	log PROMPT "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): "
     IFS= read -e response
 
     if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
         DESTINATION_PATH="$response"
-        [[ ! -d "$DESTINATION_PATH" ]] && { echo -e "${RED}Error:${NC} Path $DESTINATION_PATH does not exist." >&2; exit 1; }
+        [[ ! -d "$DESTINATION_PATH" ]] && { log ERROR "Path $DESTINATION_PATH does not exist." ; exit 1; }
     fi
 fi
 
 # install
-echo -e "Installing $SCRIPT_NAME to $DESTINATION_PATH." >&2
+log INFO "Installing $SCRIPT_NAME to $DESTINATION_PATH."
 sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
 sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
 
-[[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { echo -e "${RED}Error:${NC} Installation failed. Mod manager was not found in \$PATH." >&2; exit 1; }
-echo "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME. Use it by running '$SCRIPT_NAME'. Made with love <3." >&2
+[[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
+log INFO "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME. Use it by running '$SCRIPT_NAME'. Made with love <3."
