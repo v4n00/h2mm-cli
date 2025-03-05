@@ -52,10 +52,13 @@ function log() {
 			echo -e "$*" >&2
 			;;
 		ERROR)
-			log ERROR "$*" >&2
+			echo -e "${RED}[ERROR]${NC} $*" >&2
 			;;
 		PROMPT)
 			echo -ne "$*" >&2
+			;;
+		*)
+			echo -e "$*" >&2
 			;;
 	esac
 }
@@ -597,7 +600,7 @@ function mod_reset() {
 	fi
 
 	log PROMPT "Are you sure you want to ${RED}reset${NC} all installed mods? (Y/n): "
-	read -r confirm
+	read confirm
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		rm -f "$MODS_DIR"/*.patch_*
 		rm -f "$DB_FILE"

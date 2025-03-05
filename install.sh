@@ -18,10 +18,13 @@ function log() {
 			echo -e "$*" >&2
 			;;
 		ERROR)
-			log ERROR "$*" >&2
+			echo -e "${RED}[ERROR]${NC} $*" >&2
 			;;
 		PROMPT)
 			echo -ne "$*" >&2
+			;;
+		*)
+			echo -e "$*" >&2
 			;;
 	esac
 }
