@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.9"
+VERSION="0.3.10"
 
 # --- Globals ---
 
@@ -233,6 +233,8 @@ function display_disable_help() {
 function display_list_help() {
 	echo "Usage: h2mm list"
 	echo "Short form: h2mm l"
+	echo "Options:"
+	echo "	-v		Verbose mode."
 	echo "List all installed mods."
 	echo "Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv"
 	echo "You can rename, delete, or edit this file to manage mods manually."
@@ -813,16 +815,39 @@ function mod_uninstall() {
 }
 
 function mod_list() {
-	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_list_help; exit 0; }
+    local verbose=false
 
-	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { echo "No mods installed."; return; }
+    # parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --help|-h)
+                display_list_help
+                exit 0
+                ;;
+            --verbose|-v)
+                verbose=true
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
 
-	echo "Installed mods:" >&2
+    [[ $(wc -l < "$DB_FILE") -le 1 ]] && { echo "No mods installed."; return; }
 
-	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -F, 'NR > 1 {
-	color = ($2 == "DISABLED") ? RED : GREEN;
-	if (length($4) > 150) $4 = substr($4, 1, 147) "...";
-	printf "%2s. [%s%s%s] %s (%s)\n", $1, color, $2, NC, $3, $4}' "$DB_FILE"
+    echo "Installed mods:" >&2
+
+    awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -F, 'NR > 1 {
+        color = ($2 == "DISABLED") ? RED : GREEN;
+		if (verbose == "false") {
+			$4 = "";
+		} else {
+			gsub(/ /,"\n   -> ", $4);
+			$4 = "\n   -> " $4;
+		}
+        printf "%2s. [%s%s%s] %s %s\n", $1, color, $2, NC, $3, $4
+    }' "$DB_FILE"
 }
 
 function mod_export() {
@@ -1078,7 +1103,7 @@ function self_update() {
 
 	echo -e "Starting update script..." >&2
 
-	# Run the installer for the latest version
+	# run the installer for the latest version
 	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 	exit 0
 }
@@ -1091,7 +1116,6 @@ function main() {
 	command="$1"
 	shift
 	initialize_directories
-	initialize_modpack_directories
 	check_for_updates
 
 	case "$command" in
@@ -1117,21 +1141,27 @@ function main() {
 			mod_import "$@"
 			;;
 		"modpack-list"|"ml")
+			initialize_modpack_directories
 			modpack_list "$@"
 			;;
 		"modpack-create"|"mc")
+			initialize_modpack_directories
 			modpack_create "$@"
 			;;
 		"modpack-delete"|"md")
+			initialize_modpack_directories
 			modpack_delete "$@"
 			;;
 		"modpack-overwrite"|"mo")
+			initialize_modpack_directories
 			modpack_overwrite "$@"
 			;;
 		"modpack-switch"|"ms")
+			initialize_modpack_directories
 			modpack_switch "$@"
 			;;
 		"modpack-reset"|"mr")
+			initialize_modpack_directories
 			modpack_reset "$@"
 			;;
 		"reset"|"r")
