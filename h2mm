@@ -28,6 +28,10 @@ function get_filename_without_path() {
 	echo "$1" | awk -F/ '{print $NF}'
 }
 
+function get_patch_number() {
+	echo "$1" | grep -oP '(?<=patch_)\d+'
+}
+
 function get_basename() {
 	get_filename_without_path "$1" | sed -E 's/\.+.*//'
 }
@@ -954,6 +958,88 @@ function mod_import() {
 	log INFO "Mods imported ${GREEN}successfully${NC}."
 }
 
+function mod_order {
+	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_order_help; exit 0; }
+
+	local mod_name=""
+	local mod_index=""
+	local new_index=""
+
+	# parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			-i)
+				mod_index="$2"; shift 2
+				;;
+			-n)
+				mod_name="$2"; shift 2
+				;;
+			--help|-h)
+				display_order_help; exit 0
+				;;
+			*)
+				new_index="$1"; shift 1
+				;;
+		esac
+	done
+
+	# this code is black magic and I cannot be bothered to document it
+	# I'm really sorry, find a better way to do this maybe
+
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to change order."; exit 1; }
+
+	# find mod files
+	get_mod_name_and_index
+
+	# check if the mod is already at the desired index
+	[[ "$mod_index" == "$new_index" ]] && { log ERROR "Mod $mod_name is already at index $new_index."; exit 1; }
+
+	# get the number of mods
+	mod_count=$(awk 'END {print NR - 1}' "$DB_FILE")
+
+	# check if the new index is valid
+	[[ $new_index -lt 1 || $new_index -gt $mod_count ]] && { log ERROR "Invalid index $new_index."; exit 1; }
+
+	# check ascending or descending
+	goes_down=true
+	[[ $mod_index -gt $new_index ]] && goes_down=false
+
+	# get mod entries between the current and new index
+	if [[ $goes_down == true ]]; then
+		entries=$(awk -v current_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 >= current_index && $1 <= new_index {print $0}' "$DB_FILE")
+	else
+		entries=$(awk -v current_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 <= current_index && $1 >= new_index {print $0}' "$DB_FILE")
+	fi
+
+	# filter only entries that are enabled
+	IFS=$'\n' enabled_entries=($(echo "$entries" | grep ENABLED)); unset IFS
+
+	# get file names that might need to be upgraded/downgraded
+	current_files=$(get_files_by_entry_from_db "$entry")
+	declare -A interested_files
+	for file in $current_files; do
+		file=$(get_basename "$file")
+		interested_files["$file"]=1
+	done
+
+	declare -A patches_to_
+	if [[ $goes_down == true ]]; then
+		for entry in "${enabled_entries[@]}"; do
+			files=$(get_files_by_entry_from_db "$entry")
+			for file in $files; do
+				base_name=$(get_basename "$file")
+				if [[ -n "${interested_files[$base_name]}" ]]; then
+					patch=$(get_patch_number "$file")
+					latest_basenames+=("$file")
+
+				fi
+			done
+		done
+	else
+
+
+}
+
 # --- Modpacks management ---
 
 function modpack_list() {
@@ -1169,6 +1255,9 @@ function main() {
 			;;
 		"import"|"im")
 			mod_import "$@"
+			;;
+		"order"|"o")
+			mod_order "$@"
 			;;
 		"modpack-list"|"ml")
 			initialize_modpack_directories
