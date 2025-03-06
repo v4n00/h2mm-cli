@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.11"
+VERSION="0.3.12"
 
 # --- Globals ---
 
@@ -1146,6 +1146,7 @@ function main() {
 	command="$1"
 	shift
 	initialize_directories
+	initialize_modpack_directories
 	check_for_updates
 
 	case "$command" in
@@ -1171,27 +1172,21 @@ function main() {
 			mod_import "$@"
 			;;
 		"modpack-list"|"ml")
-			initialize_modpack_directories
 			modpack_list "$@"
 			;;
 		"modpack-create"|"mc")
-			initialize_modpack_directories
 			modpack_create "$@"
 			;;
 		"modpack-delete"|"md")
-			initialize_modpack_directories
 			modpack_delete "$@"
 			;;
 		"modpack-overwrite"|"mo")
-			initialize_modpack_directories
 			modpack_overwrite "$@"
 			;;
 		"modpack-switch"|"ms")
-			initialize_modpack_directories
 			modpack_switch "$@"
 			;;
 		"modpack-reset"|"mr")
-			initialize_modpack_directories
 			modpack_reset "$@"
 			;;
 		"reset"|"r")
