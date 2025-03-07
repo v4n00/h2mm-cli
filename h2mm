@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.11"
+VERSION="0.3.14"
 
 # --- Globals ---
 
@@ -451,9 +451,8 @@ function upgrade_mods() {
 		[[ -z "${upgrades_to_apply["$base_name"]+unset}" ]] && upgrades_to_apply["$base_name"]=$(echo $files | tr ' ' '\n' | grep "$base_name" | sed -E "s/(.*_[0-9]+).*/\1/" | sort -u | wc -l)
 	done
 
-
 	for base_name in "${!upgrades_to_apply[@]}"; do
-		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -V)); unset IFS
+		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -rV)); unset IFS
 
 		for mod in "${mods_to_upgrade[@]}"; do
 			mod=$(get_filename_without_path "$mod")
@@ -841,8 +840,15 @@ function mod_uninstall() {
 	[[ "$status" == "ENABLED" ]] && downgrade_mods "$files"
 
 	# remove entry from database
-	sed -i "/^$mod_index,/d" "$DB_FILE"
-	log INFO "Mod $mod_name ${ORANGE}uninstalled${NC} successfully."
+    sed -i "/^$mod_index,/d" "$DB_FILE"
+
+    # reindex the database
+    mods_to_reindex=($(awk -F, -v idx=$mod_index 'NR > 1 && $1 > idx {print $1}' "$DB_FILE"))
+    for idx in "${mods_to_reindex[@]}"; do
+        sed -i "s/^$idx,/$(($idx - 1)),/" "$DB_FILE"
+    done
+
+    log INFO "Mod $mod_name ${ORANGE}uninstalled${NC} successfully."
 
 	# disable any modpack
 	disable_all_modpacks
@@ -1206,6 +1212,7 @@ function main() {
 	command="$1"
 	shift
 	initialize_directories
+	initialize_modpack_directories
 	check_for_updates
 
 	case "$command" in
@@ -1234,27 +1241,21 @@ function main() {
 			mod_order "$@"
 			;;
 		"modpack-list"|"ml")
-			initialize_modpack_directories
 			modpack_list "$@"
 			;;
 		"modpack-create"|"mc")
-			initialize_modpack_directories
 			modpack_create "$@"
 			;;
 		"modpack-delete"|"md")
-			initialize_modpack_directories
 			modpack_delete "$@"
 			;;
 		"modpack-overwrite"|"mo")
-			initialize_modpack_directories
 			modpack_overwrite "$@"
 			;;
 		"modpack-switch"|"ms")
-			initialize_modpack_directories
 			modpack_switch "$@"
 			;;
 		"modpack-reset"|"mr")
-			initialize_modpack_directories
 			modpack_reset "$@"
 			;;
 		"reset"|"r")
