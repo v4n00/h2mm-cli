@@ -28,6 +28,10 @@ function get_filename_without_path() {
 	echo "$1" | awk -F/ '{print $NF}'
 }
 
+function get_patch_number() {
+	echo "$1" | grep -oP '(?<=patch_)\d+'
+}
+
 function get_basename() {
 	get_filename_without_path "$1" | sed -E 's/\.+.*//'
 }
@@ -49,6 +53,7 @@ function log() {
 	shift
 	case "$type" in
 		INFO)
+			[[ "$silent" == "true" ]] && return
 			echo -e "$*" >&2
 			;;
 		ERROR)
@@ -384,7 +389,7 @@ function downgrade_mods() {
 	for file in $files; do
 		# save the basename for the files that were deleted into a hash table, so we can downgrade mods with greater version number
 		# also depending on how many patches the mod has, we need to downgrade with more versions
-		current_version=$(echo "$file" | grep -oP '(?<=patch_)\d+')
+		current_version=$(get_patch_number "$file")
 		base_name=$(get_basename "$file")
 
 		downgrades_versions["$base_name"]=$current_version
@@ -405,11 +410,11 @@ function downgrade_mods() {
 	# the number 2 we get by counting the number of unique base names (without extensions like .stream, but with the .patch_[0-9]) in the files
 	for base_name in "${!downgrades_to_apply[@]}"; do
 		# find all files that have the same base name, and are greater than the current version, and downgrade them
-		IFS=$'\n' mods_to_downgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -V)); unset IFS
+		IFS=$'\n' mods_to_downgrade=($(ls "$MODS_DIR/$base_name"*.patch_* 2>/dev/null | sort -V)); unset IFS
 
 		for mod in "${mods_to_downgrade[@]}"; do
 			mod=$(get_filename_without_path "$mod")
-			patch_version=$(echo $mod | grep -oP '(?<=patch_)\d+')
+			patch_version=$(get_patch_number "$mod")
 
 			if [[ $patch_version -gt ${downgrades_versions[$base_name]} ]]; then
 				new_version=$((patch_version - downgrades_to_apply["$base_name"]))
@@ -438,7 +443,7 @@ function upgrade_mods() {
 		# remove disabled_ prefix if it exists
 		file=$(remove_disabled_prefix "$file")
 
-		current_version=$(echo "$file" | grep -oP '(?<=patch_)\d+')
+		current_version=$(get_patch_number "$file")
 		base_name=$(get_basename "$file")
 
 		# basically save the lowest number, by limiting the setting of the key to the first time we see it
@@ -448,11 +453,11 @@ function upgrade_mods() {
 	done
 
 	for base_name in "${!upgrades_to_apply[@]}"; do
-		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -rV)); unset IFS
+		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"*.patch_* 2>/dev/null | sort -rV)); unset IFS
 
 		for mod in "${mods_to_upgrade[@]}"; do
 			mod=$(get_filename_without_path "$mod")
-			patch_version=$(echo $mod | grep -oP '(?<=patch_)\d+')
+			patch_version=$(get_patch_number "$mod")
 
 			if [[ $patch_version -ge ${upgrade_versions[$base_name]} ]]; then
 				new_version=$((patch_version + upgrades_to_apply["$base_name"]))
