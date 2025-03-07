@@ -836,8 +836,15 @@ function mod_uninstall() {
 	[[ "$status" == "ENABLED" ]] && downgrade_mods "$files"
 
 	# remove entry from database
-	sed -i "/^$mod_index,/d" "$DB_FILE"
-	log INFO "Mod $mod_name ${ORANGE}uninstalled${NC} successfully."
+    sed -i "/^$mod_index,/d" "$DB_FILE"
+
+    # reindex the database
+    mods_to_reindex=($(awk -F, -v idx=$mod_index 'NR > 1 && $1 > idx {print $1}' "$DB_FILE"))
+    for idx in "${mods_to_reindex[@]}"; do
+        sed -i "s/^$idx,/$(($idx - 1)),/" "$DB_FILE"
+    done
+
+    log INFO "Mod $mod_name ${ORANGE}uninstalled${NC} successfully."
 
 	# disable any modpack
 	disable_all_modpacks
