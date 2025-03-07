@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.13"
+VERSION="0.3.14"
 
 # --- Globals ---
 
@@ -448,7 +448,7 @@ function upgrade_mods() {
 	done
 
 	for base_name in "${!upgrades_to_apply[@]}"; do
-		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -V)); unset IFS
+		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -rV)); unset IFS
 
 		for mod in "${mods_to_upgrade[@]}"; do
 			mod=$(get_filename_without_path "$mod")
