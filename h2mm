@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.12"
+VERSION="0.3.13"
 
 # --- Globals ---
 
@@ -68,9 +68,9 @@ function log() {
 function remove_disabled_prefix() {
 	local disabledFile="$1"
 	while [[ "$disabledFile" == disabled_* ]]; do
-		normalFile=$(echo "$disabledFile" | sed 's/^disabled_//')
+		disabledFile=$(echo "$disabledFile" | sed 's/^disabled_//')
 	done
-	echo "$normalFile"
+	echo "$disabledFile"
 }
 
 function get_mod_name_and_index() {
@@ -446,7 +446,6 @@ function upgrade_mods() {
 
 		[[ -z "${upgrades_to_apply["$base_name"]+unset}" ]] && upgrades_to_apply["$base_name"]=$(echo $files | tr ' ' '\n' | grep "$base_name" | sed -E "s/(.*_[0-9]+).*/\1/" | sort -u | wc -l)
 	done
-
 
 	for base_name in "${!upgrades_to_apply[@]}"; do
 		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"* 2>/dev/null | sort -V)); unset IFS
