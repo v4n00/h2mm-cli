@@ -23,9 +23,6 @@ function log() {
 		PROMPT)
 			echo -ne "$*" >&2
 			;;
-		*)
-			echo -e "$*" >&2
-			;;
 	esac
 }
 

@@ -380,7 +380,7 @@ function check_for_updates() {
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
 		log INFO "A new version of h2mm is available: $VERSION -> $latest_version"
-		log INFO "Run \"h2mm update\" to update."3
+		log INFO "Run \"h2mm update\" to update."
 	fi
 
 	echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
