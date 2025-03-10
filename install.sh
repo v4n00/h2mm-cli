@@ -155,4 +155,5 @@ sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
 sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
 
 [[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
-log INFO "Helldivers 2 Mod Manager CLI installed successfully to $DESTINATION_PATH/$SCRIPT_NAME. Use it by running '$SCRIPT_NAME'. Made with love <3."
+log INFO "Helldivers 2 Mod Manager CLI ${GREEN}successfully${NC} installed: $DESTINATION_PATH/$SCRIPT_NAME."
+log INFO "Use it by running '$SCRIPT_NAME'. Made with love <3 by v4n and contributors."
