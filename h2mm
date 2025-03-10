@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.15"
+VERSION="0.3.14"
 
 # --- Globals ---
 
@@ -380,7 +380,7 @@ function check_for_updates() {
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
 		log INFO "A new version of h2mm is available: $VERSION -> $latest_version"
-		log INFO "Run \"h2mm update\" to update."
+		log INFO "Run \"h2mm update\" to update."3
 	fi
 
 	echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
