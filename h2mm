@@ -511,8 +511,8 @@ function mod_disable() {
 	fi
 
 	# disable each mod file by adding disabled_ to the start of the filename
-	files=$(get_files_by_entry_from_db "$entry")
-	for file in $files; do
+	current_mod_files=$(get_files_by_entry_from_db "$entry")
+	for file in $current_mod_files; do
 		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 
 		disabled_file="disabled_$file"
@@ -530,7 +530,7 @@ function mod_disable() {
 	done
 
 	# downgrade mods with greater version number
-	downgrade_mods "$files"
+	downgrade_mods "$current_mod_files"
 
 	# update the database
 	sed -i "/^$mod_index,/s/ENABLED/DISABLED/" "$DB_FILE"
@@ -567,13 +567,13 @@ function mod_enable() {
 
 	[[ "$status" == "ENABLED" ]] && { log ERROR "Mod $mod_name is already enabled."; exit 1; }
 
-	files=$(get_files_by_entry_from_db "$entry")
+	current_mod_files=$(get_files_by_entry_from_db "$entry")
 
 	# upgrade mods with lower version number
-	upgrade_mods "$files"
+	upgrade_mods "$current_mod_files"
 
 	# enable each mod file by removing disabled_ from the start of the filename
-	for file in $files; do
+	for file in $current_mod_files; do
 		enabled_file=$(remove_disabled_prefix "$file")
 
 		# check if the files exists
@@ -825,9 +825,9 @@ function mod_uninstall() {
 	get_mod_name_and_index
 
 	# delete mod files
-	files=$(get_files_by_entry_from_db "$entry")
+	current_mod_files=$(get_files_by_entry_from_db "$entry")
 
-	for file in $files; do
+	for file in $current_mod_files; do
 		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 
 		log INFO "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
@@ -837,7 +837,7 @@ function mod_uninstall() {
 	done
 
 	# downgrade mods with greater version number, only if the mod is enabled
-	[[ "$status" == "ENABLED" ]] && downgrade_mods "$files"
+	[[ "$status" == "ENABLED" ]] && downgrade_mods "$current_mod_files"
 
 	# remove entry from database
     sed -i "/^$mod_index,/d" "$DB_FILE"
@@ -1003,19 +1003,46 @@ function mod_order {
 	[[ $new_index -gt $mod_count ]] && { log ERROR "Index can not be more than mod count (${mod_count})."; exit 1; }
 
 	# assert ascending or descending order
-	if [[ $mod_index -gt $new_index ]]; then
-		entries=($(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 <= mod_index && $1 >= new_index {print $1}' "$DB_FILE"))
+	ascending_order=true
+	[[ $mod_index -gt $new_index ]] && ascending_order=false
+
+	# get entries between the indexes
+	if [[ $ascending_order == true ]]; then
+		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 >= mod_index && $1 <= new_index {print $0}' "$DB_FILE")
 	else
-		entries=($(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 >= mod_index && $1 <= new_index {print $1}' "$DB_FILE"))
-		for entry in "${entries[@]}"; do
-		echo "hi1"
-			mod_disable -i "$entry"
-		done
-		for entry in "${entries[@]}"; do
-		echo "hi2"
-			mod_enable -i "$entry"
-		done
+		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 <= mod_index && $1 >= new_index {print $0}' "$DB_FILE")
 	fi
+
+	# get files for the current mod
+	IFS= current_mod_files=$(get_files_by_entry_from_db "$entry"); unset IFS
+
+	# step 1 - count how many replaces need to be done in hash table
+	declare -A replace_count
+	for file in $current_mod_files; do
+		extension = $(get_extension "$file")
+		basename = $(get_basename "$file")
+
+		# if the file has no extension, add the basename to the hash table or increment the count
+		if [[ -z "$extension" ]]; then
+			replace_count["$basename"]=$(( ${replace_count["$basename"]:-0} + 1 ))
+		fi
+	done
+
+	# step 2 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
+	declare -A files_to_replace=()
+	for basename in "${!replace_count[@]}"; do
+		IFS= files_to_replace["$basename"]=$(grep -o "$basename[^ ]*" "$entries"); unset IFS
+	done
+
+	for basename in "${files_to_replace[@]}"; do
+		echo "${files_to_replace["$basename"]}"
+	done
+
+	# step 3 - for every basename in files_to_replace, add replace_count to each file's patch number
+
+	# step 4 - for every file in current_mod_files, subtract the basename's replace_count size from the patch number
+
+	# step 5 - reindex the database from that point forward
 
 	# update the database - interchange the indexes and the position in the file
 }
