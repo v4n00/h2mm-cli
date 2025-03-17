@@ -296,6 +296,19 @@ Import mods and database from an archive file (coming from h2mm).
 EOF
 }
 
+function display_order_help() {
+	cat << EOF
+Usage: h2mm order [OPTIONS] [MOD_NAME|MOD_INDEX] <NEW_INDEX>
+Change order of a mod by name or index.
+Options:
+	-i <index>		Index of the mod to order.
+	-n <index>		New index of the mod.
+Usage:
+	h2mm order -n "Example mod" 1
+	h2mm order -i 1 2
+EOF
+}
+
 function display_modpack_list_help() {
 	cat << EOF
 Usage: h2mm modpack-list
@@ -1028,10 +1041,15 @@ function mod_order {
 		fi
 	done
 
-	# step 2 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
+	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
 	for basename in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$basename"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$basename[^ ]*" | sort -rV); unset IFS
+		IFS= files_to_replace["$basename"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$basename[^ ]*"); unset IFS
+	done
+
+	# step 2.2 - reverse sort the files_to_replace if we are in descending order
+	[[ $ascending_order == false ]] && for basename in "${!files_to_replace[@]}"; do
+		files_to_replace["$basename"]=$(echo "${files_to_replace["$basename"]}" | sort -rV)
 	done
 
 	# move current mod files to "t_$file" so we can move the new files to the correct index
@@ -1070,35 +1088,58 @@ function mod_order {
 		extension=$(get_extension "$file")
 
 		# get size of only files without an extension
-		size=$(echo "${files_to_replace["$basename"]}" | grep -vE "${basename}.patch_[0-9]+$" | tr ' ' '\n' | wc -l)
+		size=$(echo "${files_to_replace["$basename"]}" | grep -E "${basename}.patch_[0-9]+$" | tr ' ' '\n' | wc -l)
 
-		# if ascending order, add size from the patch number, otherwise subtract
-		operation="+"; [[ $ascending_order == false ]] && operation="-"
-		new_file="${basename}.patch_$(($patch_number $operation $size))${extension}"
+		# in case size is 0, move t_file back to file later
+		new_file=${file}
 
-		log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
+		if [[ $size -gt 0 ]]; then
+			# if ascending order, add size from the patch number, otherwise subtract
+			operation="+"; [[ $ascending_order == false ]] && operation="-"
+			new_file="${basename}.patch_$(($patch_number $operation $size))${extension}"
 
-		# dont forget current mod files are prefixed with t_
-		mv "$MODS_DIR/t_$file" "$MODS_DIR/$new_file"
-		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
+			log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
 
-		# update entry (will be replaced later in db)
-		entry=$(echo "$entry" | sed "s/\(\b$file\b\)/$new_file/" | sed "s/^$mod_index,/$new_index,/")
+			# dont forget current mod files are prefixed with t_
+			mv "$MODS_DIR/t_$file" "$MODS_DIR/t_$new_file"
+			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
+
+			# update file names
+			entry=$(echo "$entry" | sed "s/\(\b$file\b\)/$new_file/")
+		fi
+
+		# move back temp file
+		mv "$MODS_DIR/t_$new_file" "$MODS_DIR/$new_file"
+
+		# update index (will be replaced in db later)
+		entry=$(echo "$entry" | sed "s/^$mod_index,/$new_index,/")
 	done
 
-	# step 5 - move the entry to the new index
-	sed -i "/^$mod_index,/d" "$DB_FILE"
-	sed -i "/^$new_index,/i $entry" "$DB_FILE"
+	# step 5.1 - change current mod to t_index so we can move the other indexes
+	sed -i "s/^$mod_index,/t_$mod_index,/" "$DB_FILE"
 
-	# reindex the remaining entries
-	idxs=$(echo "$entries" | awk -F, '{print $1}' | tr ' ' '\n') # something is wrong here
-	echo "$idxs"
+	# step 5.2 - reindex the rest of the mods
+	idxs=$(echo "$entries" | awk -F, '{print $1}' | tr ' ' '\n')
+
+	# step 5.3 - reverse sort the idxs if we are in descending order
+	[[ $ascending_order == false ]] && idxs=$(echo "$idxs" | sort -r)
+
 	for idx in $idxs; do
 		# if ascending order, subtract 1 from the index, otherwise add 1
 		operation="-"; [[ $ascending_order == false ]] && operation="+"
 
 		sed -i "s/^$idx,/$(($idx $operation 1)),/" "$DB_FILE"
 	done
+
+	# step 6 - move the entry to the new index
+	sed -i "/^t_$mod_index,/d" "$DB_FILE"
+
+	# weird edge case where the new index is the last index
+	if [[ $((new_index + 1)) -gt $(wc -l < "$DB_FILE") ]]; then
+		echo "$entry" >> "$DB_FILE"
+	else
+		sed -i "$((new_index + 1))i $entry" "$DB_FILE"
+	fi
 
 	log INFO "Mod ${GREEN}successfully${NC} reindexed: $mod_name from $mod_index to $new_index."
 }
