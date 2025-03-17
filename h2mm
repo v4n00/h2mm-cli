@@ -1008,9 +1008,9 @@ function mod_order {
 
 	# get entries between the indexes
 	if [[ $ascending_order == true ]]; then
-		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 >= mod_index && $1 <= new_index {print $0}' "$DB_FILE")
+		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 > mod_index && $1 <= new_index {print $0}' "$DB_FILE")
 	else
-		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 <= mod_index && $1 >= new_index {print $0}' "$DB_FILE")
+		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 < mod_index && $1 >= new_index {print $0}' "$DB_FILE")
 	fi
 
 	# get files for the current mod
@@ -1019,8 +1019,8 @@ function mod_order {
 	# step 1 - count how many replaces need to be done in hash table
 	declare -A replace_count
 	for file in $current_mod_files; do
-		extension = $(get_extension "$file")
-		basename = $(get_basename "$file")
+		extension=$(get_extension "$file")
+		basename=$(get_basename "$file")
 
 		# if the file has no extension, add the basename to the hash table or increment the count
 		if [[ -z "$extension" ]]; then
@@ -1029,22 +1029,78 @@ function mod_order {
 	done
 
 	# step 2 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
-	declare -A files_to_replace=()
+	declare -A files_to_replace
 	for basename in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$basename"]=$(grep -o "$basename[^ ]*" "$entries"); unset IFS
+		IFS= files_to_replace["$basename"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$basename[^ ]*" | sort -rV); unset IFS
 	done
 
-	for basename in "${files_to_replace[@]}"; do
-		echo "${files_to_replace["$basename"]}"
+	# move current mod files to "t_$file" so we can move the new files to the correct index
+	for file in $current_mod_files; do
+		mv "$MODS_DIR/$file" "$MODS_DIR/t_$file"
+		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
 	done
 
-	# step 3 - for every basename in files_to_replace, add replace_count to each file's patch number
+	# step 3 - for every basename in files_to_replace, add replace_count to each file's patch number and move
+	for basename in "${!files_to_replace[@]}"; do
+		files=$(echo "${files_to_replace["$basename"]}" | tr ' ' '\n')
 
-	# step 4 - for every file in current_mod_files, subtract the basename's replace_count size from the patch number
+		for file in $files; do
+			basename=$(get_basename "$file")
+			patch_number=$(get_patch_number "$file")
+			extension=$(get_extension "$file")
 
-	# step 5 - reindex the database from that point forward
+			# if ascending order, subtract replace_count to the patch number, otherwise add
+			operation="-"; [[ $ascending_order == false ]] && operation="+"
+			new_file="${basename}.patch_$(($patch_number $operation ${replace_count["$basename"]}))${extension}"
 
-	# update the database - interchange the indexes and the position in the file
+			mv "$MODS_DIR/$file" "$MODS_DIR/$new_file"
+			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
+
+			log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
+
+			# update db
+			sed -i "s/\(\b$file\b\)/$new_file/" "$DB_FILE"
+		done
+	done
+
+	# step 4 - for every file in current_mod_files, subtract the basename's array size of files_to_replace from the patch number
+	for file in $current_mod_files; do
+		basename=$(get_basename "$file")
+		patch_number=$(get_patch_number "$file")
+		extension=$(get_extension "$file")
+
+		# get size of only files without an extension
+		size=$(echo "${files_to_replace["$basename"]}" | grep -vE "${basename}.patch_[0-9]+$" | tr ' ' '\n' | wc -l)
+
+		# if ascending order, add size from the patch number, otherwise subtract
+		operation="+"; [[ $ascending_order == false ]] && operation="-"
+		new_file="${basename}.patch_$(($patch_number $operation $size))${extension}"
+
+		log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
+
+		# dont forget current mod files are prefixed with t_
+		mv "$MODS_DIR/t_$file" "$MODS_DIR/$new_file"
+		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
+
+		# update entry (will be replaced later in db)
+		entry=$(echo "$entry" | sed "s/\(\b$file\b\)/$new_file/" | sed "s/^$mod_index,/$new_index,/")
+	done
+
+	# step 5 - move the entry to the new index
+	sed -i "/^$mod_index,/d" "$DB_FILE"
+	sed -i "/^$new_index,/i $entry" "$DB_FILE"
+
+	# reindex the remaining entries
+	idxs=$(echo "$entries" | awk -F, '{print $1}' | tr ' ' '\n') # something is wrong here
+	echo "$idxs"
+	for idx in $idxs; do
+		# if ascending order, subtract 1 from the index, otherwise add 1
+		operation="-"; [[ $ascending_order == false ]] && operation="+"
+
+		sed -i "s/^$idx,/$(($idx $operation 1)),/" "$DB_FILE"
+	done
+
+	log INFO "Mod ${GREEN}successfully${NC} reindexed: $mod_name from $mod_index to $new_index."
 }
 
 # --- Modpacks management ---
