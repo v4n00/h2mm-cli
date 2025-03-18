@@ -1044,7 +1044,7 @@ function mod_order {
 	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
 	for basename in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$basename"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$basename[^ ]*"); unset IFS
+		IFS= files_to_replace["$basename"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$basename\.patch_[^ ]*"); unset IFS
 	done
 
 	# step 2.2 - reverse sort the files_to_replace if we are in descending order
