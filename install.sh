@@ -44,7 +44,7 @@ EOF
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
     ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
-	["4"]='awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" | tee "$1/mods.csv" > /dev/null'
+	["4"]='tmp_file=$(mktemp) && awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" > "$tmp_file" && tee "$1/mods.csv" < "$tmp_file" > /dev/null && rm "$tmp_file"'
 )
 
 # notify if update is happening
