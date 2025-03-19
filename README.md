@@ -34,23 +34,26 @@ h2mm
 ### Available commands
 
 - `install` - Install a mod by the file provided (directory, zip, patch).
-- `uninstall` - Uninstall a mod by name (or index).
+- `uninstall` - Uninstall a mod.
 - `list` - List all installed mods.
-- `enable` - Enable a mod by name (or index).
-- `disable` - Disable a mod by name (or index).
+- `enable` - Enable a mod.
+- `disable` - Disable a mod.
 - `export` - Export installed mods to a zip file.
 - `import` - Import mods from a zip file.
+- `order` - Change load order for a mod.
 - `modpack-create` - Create a modpack from the currently installed mods.
-- `modpack-switch` - Switch to a modpack by name (or index).
+- `modpack-switch` - Switch to a modpack.
 - `modpack-list` - List all installed modpacks.
-- `modpack-delete` - Delete a modpack by name (or index).
-- `modpack-overwrite` - Overwrite a modpack by name (or index).
+- `modpack-delete` - Delete a modpack.
+- `modpack-overwrite` - Overwrite a modpack.
 - `modpack-reset` - Reset all installed modpacks.
 - `update` - Update h2mm to latest version.
 - `reset` - Reset all installed mods.
 - `help` - Display this help message.
 
 ### Basic usage
+
+To find out how to use a command, you can run `h2mm <COMMAND> --help`.
 
 #### Install mod(s)
 
@@ -65,17 +68,17 @@ h2mm install -n "Example mod" mod* # using a wildcard to include all files
 #### Uninstall a mod
 
 ```bash
-h2mm uninstall "Example mod"
-h2mm uninstall -i 1 # uninstall mod with index 1
+h2mm uninstall -n "Example mod"
+h2mm uninstall -i 3
 ```
 
 #### Enable/disable mods
 
 ```bash
-h2mm enable "Example mod"
-h2mm enable -i 1 # enable mod with index 1
-h2mm disable "Example mod"
-h2mm disable -i 1 # disable mod with index 1
+h2mm enable -n "Example mod"
+h2mm enable -i 3
+h2mm disable -n "Example mod"
+h2mm disable -i 3
 ```
 
 #### List installed mods
@@ -115,6 +118,7 @@ You can use the short form of commands to save some time. The shortcuts are:
 - `l` for `list`
 - `ex` for `export`
 - `im` for `import`
+- `o` for `order`
 - `mc` for `modpack-create`
 - `ms` for `modpack-switch`
 - `ml` for `modpack-list`
@@ -129,10 +133,10 @@ You can use the short form of commands to save some time. The shortcuts are:
 You can set up modpacks by using the `modpack-*` commands. This allows you to quickly change between a set of mods. For more information, check the help message.
 
 ```bash
-h2mm modpack-create "Modpack 1"
+h2mm modpack-create -n "Modpack 1"
 # install, enable, disable other mods...
-h2mm modpack-create "Modpack 2"
-h2mm modpack-switch "Modpack 1"
+h2mm modpack-create -n "Modpack 2"
+h2mm modpack-switch -n "Modpack 1"
 ```
 
 ### Exporting and importing
@@ -140,8 +144,8 @@ h2mm modpack-switch "Modpack 1"
 You can export all installed mods to a zip file and import mods from the same file. This can be useful for sharing mods with others or for backing up your mods. The archive file (`.tar.gz`) will be saved in the current directory.
 
 ```bash
-h2mm export modpack1.zip
-h2mm import modpack2.zip
+h2mm export
+h2mm import /path/to/mods.tar.gz
 ```
 
 ### Resetting all installed mods

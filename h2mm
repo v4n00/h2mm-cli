@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.3.15"
+VERSION="0.4.0"
 
 # --- Globals ---
 
@@ -17,6 +17,12 @@ MODPACKS_DB_FILE=""
 H2PATH="${HOME}/.config/h2mm/h2path"
 LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
+
+breaking_changes_patches=(
+    ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
+    ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
+	["4"]='awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" | tee "$1/mods.csv" > /dev/null'
+)
 
 # --- Utility Functions ---
 
@@ -50,6 +56,16 @@ function get_name_by_entry_from_db() {
 
 function disable_all_modpacks() {
 	sed -i 's/ENABLED/DISABLED/' "$MODPACKS_DB_FILE"
+}
+
+function parse_help_no_arguments() {
+	display_help="$1"
+	[[ "$2" == "--help" || "$2" == "-h" ]] && { $display_help; exit 0; }
+}
+
+function parse_help_has_arguments() {
+	display_help="$1"
+	[[ $# -eq 1 || "$2" == "--help" || "$2" == "-h"  ]] && { $display_help; exit 0; }
 }
 
 function log() {
@@ -189,89 +205,93 @@ function initialize_modpack_directories() {
 
 # --- Help Functions ---
 
-function display_help() {
+function display_help_main() {
 	cat << EOF
 Helldivers 2 Mod Manager v${VERSION}
 Usage: h2mm [OPTION] COMMAND
 Commands:
 	i, install					Install a mod by the file provided (directory, zip, patch).
-	u, uninstall					Uninstall a mod by name (or index).
+	u, uninstall					Uninstall a mod.
 	l, list						List all installed mods.
-	e, enable					Enable a mod by name (or index).
-	d, disable					Disable a mod by name (or index).
+	e, enable					Enable a mod.
+	d, disable					Disable a mod.
 	ex, export					Export installed mods to a zip file.
 	im, import					Import mods from a zip file.
+	o, order					Change load order of a mod.
 	mc, modpack-create				Create a modpack from the currently installed mods.
-	ms, modpack-switch				Switch to a modpack by name (or index).
+	ms, modpack-switch				Switch to a modpack.
 	ml, modpack-list				List all installed modpacks.
-	mc, modpack-delete				Delete a modpack by name (or index).
-	mo, modpack-overwrite				Overwrite a modpack by name (or index).
+	mc, modpack-delete				Delete a modpack.
+	mo, modpack-overwrite				Overwrite a modpack.
 	mr, modpack-reset				Reset all installed modpacks.
 	up, update					Update h2mm to the latest version.
 	r, reset					Reset all installed mods.
 	help						Display this help message.
-For more information on usage, use h2mm [COMMAND] --help.
+For more information on usage, use h2mm <COMMAND> --help.
 Usage:
 	h2mm install /path/to/mod.zip
-	h2mm install /path/to/mod/files
-	h2mm uninstall \"Example mod\"
+	h2mm uninstall -n "Example mod"
+	h2mm list
 EOF
 }
 
-function display_install_help() {
+function display_help_install() {
 	cat << EOF
-Usage: h2mm install [OPTIONS] MOD_FILES|MOD_DIRECTORIES|MOD_ZIPS
+Usage: h2mm install [OPTIONS] <MOD_FILES|MOD_DIRECTORIES|MOD_ZIPS>
 Install a mod with any combination of mod files, directories, and zip files.
 Options:
-	-n "<MOD_NAME>"		Name the mod yourself, inside double quotes.
-	<MOD_FILES>			Multiple mod files, accepts wildcards.
-	<MOD_DIRECTORIES>		Directory/directories containing mod files.
-	<MOD_ZIPS>			Zip file(s) containing mod files.
+	-n "MOD_NAME"			Name of the mod.
+	MOD_ZIPS			Zip file(s) containing mod files.
+	MOD_FILES			Mod file(s), accepts wildcards.
+	MOD_DIRECTORIES			Directory/directories containing mod files.
 Example:
 	h2mm install /path/to/mod.zip
 	h2mm install /path/to/mod/files
 	h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files
-	h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream
+	h2mm install mod.patch_0 mod.patch_0.stream -n "Example mod"
 EOF
 }
 
-function display_uninstall_help() {
+function display_help_uninstall() {
 	cat << EOF
-Usage: h2mm uninstall [OPTIONS] "MOD_NAME"
+Usage: h2mm uninstall [OPTIONS] <"MOD_NAME"|MOD_INDEX>
 Uninstall a mod by name or index.
 Options:
-	-i <index>		Index of the mod to uninstall.
+	-n "MOD_NAME"		Name of the mod to uninstall.
+	-i MOD_INDEX		Index of the mod to uninstall.
 Usage:
-	h2mm uninstall "Example mod"
-	h2mm uninstall -i 1	# uninstall mod with index 1
+	h2mm uninstall -n "Example mod"
+	h2mm uninstall -i 3
 EOF
 }
 
-function display_enable_help() {
+function display_help_enable() {
 	cat << EOF
-Usage: h2mm enable [OPTIONS] "MOD_NAME"
+Usage: h2mm enable [OPTIONS] <"MOD_NAME"|MOD_INDEX>
 Enable a mod by name or index.
 Options:
-	-i <index>		Index of the mod to enable.
+	-n "MOD_NAME"		Name of the mod to enable.
+	-i MOD_INDEX		Index of the mod to enable.
 Usage:
-	h2mm enable "Example mod"
-	h2mm enable -i 1	# enable mod with index 1
+	h2mm enable -n "Example mod"
+	h2mm enable -i 3
 EOF
 }
 
-function display_disable_help() {
+function display_help_disable() {
 	cat << EOF
-Usage: h2mm disable [OPTIONS] "MOD_NAME"
+Usage: h2mm disable [OPTIONS] <"MOD_NAME"|MOD_INDEX>
 Disable a mod by name or index.
 Options:
-	-i <index>		Index of the mod to disable.
+	-n "MOD_NAME"		Name of the mod to disable.
+	-i MOD_INDEX		Index of the mod to disable.
 Usage:
-	h2mm disable "Example mod"
-	h2mm disable -i 1 # disable mod with index 1
+	h2mm disable -n "Example mod"
+	h2mm disable -i 3
 EOF
 }
 
-function display_list_help() {
+function display_help_list() {
 	cat << EOF
 Usage: h2mm list
 Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv
@@ -281,43 +301,43 @@ Options:
 EOF
 }
 
-function display_reset_help() {
+function display_help_reset() {
 	cat << EOF
 Usage: h2mm reset
 Reset all installed mods.
 Deletes all installed mods/modpacks and the database file.
-Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv, along with the mods.
+Database of mods is stored in Steam/steamapps/common/Helldivers 2/data/mods.csv, along with the mods.
 EOF
 }
 
-function display_export_help() {
+function display_help_export() {
 	cat << EOF
 Usage: h2mm export
-Export installed mods and database to a zip file (in h2mm format, archive with csv).
+Export installed mods, modpacks and database to a zip file (in h2mm format - archive with csv) in the current working directory.
 EOF
 }
 
-function display_import_help() {
+function display_help_import() {
 	cat << EOF
-Usage: h2mm import
-Import mods and database from an archive file (coming from h2mm).
+Usage: h2mm import <ARCHIVE_FILE>
+Import mods, modpacks and database from an archive file (coming from h2mm).
 EOF
 }
 
-function display_order_help() {
+function display_help_order() {
 	cat << EOF
-Usage: h2mm order [OPTIONS] [MOD_NAME|MOD_INDEX] <NEW_INDEX>
+Usage: h2mm order [OPTIONS] <"MOD_NAME"|MOD_INDEX> <NEW_INDEX>
 Change order of a mod by name or index.
 Options:
-	-i <index>		Index of the mod to order.
-	-n <index>		New index of the mod.
+	-i index		Index of the mod to order.
+	-n "MOD_NAME"		Name of the mod to order.
 Usage:
-	h2mm order -n "Example mod" 1
-	h2mm order -i 1 2
+	h2mm order -n "Example mod" 6
+	h2mm order -i 3 6
 EOF
 }
 
-function display_modpack_list_help() {
+function display_help_modpack_list() {
 	cat << EOF
 Usage: h2mm modpack-list
 List all installed modpacks.
@@ -326,24 +346,24 @@ You can rename, delete, or edit this file to manage modpacks manually.
 EOF
 }
 
-function display_modpack_create_help() {
+function display_help_modpack_create() {
 	cat << EOF
-Usage: h2mm modpack-create "MODPACK_NAME"
+Usage: h2mm modpack-create -n "MODPACK_NAME"
 Create a modpack from a range of mods specified after command is called.
 EOF
 }
 
-function display_modpack_switch_help() {
+function display_help_modpack_switch() {
 	cat << EOF
-Usage: h2mm modpack-switch [OPTIONS] "MODPACK_NAME"
+Usage: h2mm modpack-switch [OPTIONS] <"MODPACK_NAME"|MODPACK_INDEX>
 Switch to a modpack by name or index.
 Options:
-	-i <index>		Index of the modpack to switch to.
-Switch to a modpack by name or index.
+	-n "MODPACK_NAME"	Name of the modpack to switch to.
+	-i index		Index of the modpack to switch to.
 EOF
 }
 
-function display_modpack_reset_help() {
+function display_help_modpack_reset() {
 	cat << EOF
 Usage: h2mm modpack-reset
 Reset all installed modpacks.
@@ -352,21 +372,23 @@ Database of modpacks is stored in Steam/steamapps/common/Helldivers\ 2/data/modp
 EOF
 }
 
-function display_modpack_delete_help() {
+function display_help_modpack_delete() {
 	cat << EOF
-Usage: h2mm modpack-delete [OPTIONS] "MODPACK_NAME"
-Options:
-	-i <index>		Index of the modpack to delete.
+Usage: h2mm modpack-delete [OPTIONS] <"MODPACK_NAME"|MODPACK_INDEX>
 Delete a modpack by name or index.
+Options:
+	-n "MODPACK_NAME"	Name of the modpack to delete.
+	-i index		Index of the modpack to delete.
 EOF
 }
 
-function display_modpack_overwrite_help() {
+function display_help_modpack_overwrite() {
 	cat << EOF
-Usage: h2mm modpack-overwrite [OPTIONS] "MODPACK_NAME"
-Options:
-	-i <index>		Index of the modpack to overwrite.
+Usage: h2mm modpack-overwrite [OPTIONS] <"MODPACK_NAME"|MODPACK_INDEX>
 Overwrite a modpack (the mods that it uses) by name or index.
+Options:
+	-n "MODPACK_NAME"	Name of the modpack to overwrite.
+	-i index		Index of the modpack to overwrite.
 EOF
 }
 
@@ -498,22 +520,23 @@ function upgrade_mods() {
 # Mod management
 
 function mod_disable() {
+	parse_help_has_arguments display_help_disable "$@"
 	local mod_name=""
 	local mod_index=""
-
-	[[ $# -eq 0 ]] && { display_disable_help; exit 0; }
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
-			--help|-h)
-				display_disable_help; exit 0
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
+				mod_name="$2"; shift 2
 				;;
 			*)
-				mod_name="$1"; shift 1
+				$display_help; exit 0
 				;;
 		esac
 	done
@@ -557,26 +580,29 @@ function mod_disable() {
 	sed -i "/^$mod_index,/s/ENABLED/DISABLED/" "$DB_FILE"
 
 	[[ $? -ne 0 ]] && { log ERROR "Could not disable mod."; exit 1; }
-	log INFO "Mod $mod_name ${GREEN}successfully${NC} disabled."
+	log INFO "Mod ${GREEN}successfully${NC} disabled: $mod_name."
+
+	disable_all_modpacks
 }
 
 function mod_enable() {
+	parse_help_has_arguments display_help_enable "$@"
 	local mod_name=""
 	local mod_index=""
-
-	[[ $# -eq 0 ]] && { display_enable_help; exit 0; }
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
-			--help|-h)
-				display_enable_help; exit 0
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
+				mod_name="$2"; shift 2
 				;;
 			*)
-				mod_name="$1"; shift 1
+				$display_help; exit 0
 				;;
 		esac
 	done
@@ -614,24 +640,22 @@ function mod_enable() {
 	sed -i "/^$mod_index,/s/DISABLED/ENABLED/" "$DB_FILE"
 
 	[[ $? -ne 0 ]] && { log ERROR "Could not enable mod."; exit 1; }
-	log INFO "Mod $mod_name ${GREEN}successfully${NC} enabled."
+	log INFO "Mod ${GREEN}successfully${NC} enabled: $mod_name."
+
+	disable_all_modpacks
 }
 
 function mod_reset() {
-	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-		display_reset_help
-		exit 0
-	fi
-
-	local modpack=false
-	[[ "$1" == "--modpack" ]] && modpack=true
+	parse_help_no_arguments display_help_reset "$@"
+	local no_path_reset=false; [[ "$1" == "--no-path-reset" ]] && no_path_reset=true
 
 	log PROMPT "Are you sure you want to ${RED}reset${NC} all installed mods? (Y/n): "
 	read confirm
+
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		rm -f "$MODS_DIR"/*.patch_*
 		rm -f "$DB_FILE"
-		[[ $modpack == false ]] && rm -f "$H2PATH"
+		[[ $no_path_reset == false ]] && rm -f "$H2PATH"
 		log INFO "Mods ${GREEN}successfully${NC} reset."
 	else
 		log INFO "Reset cancelled."
@@ -640,21 +664,18 @@ function mod_reset() {
 }
 
 function mod_install() {
+	parse_help_has_arguments display_help_install "$@"
 	local mod_name=""
 	local mod_dir=()
 	local mod_files=()
 	local mod_zip=()
 
-	[[ $# -eq 0 ]] && { display_install_help; exit 0; }
-
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-		-n)
+		"-n")
+			[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 			mod_name="$2"; shift 2
-			;;
-		--help|-h)
-			display_install_help; exit 0
 			;;
 		*)
 			if [[ -f "$1" && "$1" == *.zip ]]; then
@@ -688,7 +709,7 @@ function mod_install() {
 		mod_zip=("${mod_zip[@]:1}")
 	done
 
-	# extract the zip file and pass it to mod dirs
+	# if zip, extract the zip file and pass it to mod dirs
 	if [[ -n "$mod_zip" ]]; then
 		command -v unzip &> /dev/null || { log ERROR "unzip package is not installed."; exit 1; }
 
@@ -777,8 +798,6 @@ function mod_install() {
 		[[ ! -f "$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 	done
 
-	# hash table - in case multiple named files are needed for 1 mod install, store the patch count
-	declare -A patch_count
 	# store the target files so we can put them in the database later
 	target_files=()
 	# sort the mod files because with the below logic, the .stream and .gpu_resources files need to come after their respective patch files
@@ -786,23 +805,18 @@ function mod_install() {
 
 	for file in "${mod_files[@]}"; do
 		base_name=$(get_basename "$file")
-		patch_prefix="$MODS_DIR/${base_name}.patch_"
-		# count already installed patches
-		count=$(ls "${patch_prefix}"* 2>/dev/null | grep -E '([0-9]+$)' 2>/dev/null | wc -l)
-
-		# set patch count for file name if it doesn't exist yet
-		if [[ -z "${patch_count[$file]+unset}" ]]; then
-			patch_count["$file"]=$count
-		fi
-		# if the file has an extension (e.g. .stream, .gpu_resources), set the last patch number for the next step
-		patch_count["$base_name"]=$count
-
-		# if the file has an extension, look for the last patch number and use that, otherwise, the count will be wrong
 		extension=$(get_extension "$file")
+
+
+		# count already installed patches
+		count=$(ls "$MODS_DIR/${base_name}.patch_"* 2>/dev/null | grep -E '([0-9]+$)' 2>/dev/null | wc -l)
+
+		# if the file has an extension, look for the last patch number and subtract 1, otherwise, the count will be wrong
+		target_file="${base_name}.patch_"
 		if [[ -n "$extension" ]]; then
-			target_file="${base_name}.patch_$((patch_count[$base_name] - 1))${extension}"
+			target_file="${target_file}$(($count - 1))${extension}"
 		else
-			target_file="${base_name}.patch_${patch_count[$file]}"
+			target_file="${target_file}${count}"
 		fi
 
 		target_files+=($target_file)
@@ -823,22 +837,23 @@ function mod_install() {
 }
 
 function mod_uninstall() {
+	parse_help_has_arguments display_help_uninstall "$@"
 	local mod_name=""
 	local mod_index=""
-
-	[[ $# -eq 0 ]] && { display_uninstall_help; exit 0; }
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
-			--help|-h)
-				display_uninstall_help; exit 0
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
+				mod_name="$2"; shift 2
 				;;
 			*)
-				mod_name="$1"; shift 1
+				$display_help; exit 0
 				;;
 		esac
 	done
@@ -879,26 +894,14 @@ function mod_uninstall() {
 }
 
 function mod_list() {
+	parse_help_no_arguments display_help_list "$@"
     local verbose=false
 
     # parse arguments
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            --help|-h)
-                display_list_help
-                exit 0
-                ;;
-            --verbose|-v)
-                verbose=true
-                shift
-                ;;
-            *)
-                shift
-                ;;
-        esac
-    done
+	[[ "$1" == "--verbose" || "$1" == "-v" ]] && verbose=true
 
-    [[ $(wc -l < "$DB_FILE") -le 1 ]] && { log INFO "No mods installed."; return; }
+	# quit if no mods are installed
+    [[ $(wc -l < "$DB_FILE") -le 1 ]] && { log INFO "No mods installed."; exit 0; }
 
     log INFO "Installed mods:"
 
@@ -915,8 +918,7 @@ function mod_list() {
 }
 
 function mod_export() {
-	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_export_help; exit 0; }
-
+	parse_help_no_arguments display_help_export "$@"
 	local save_dir=$(pwd)
 	local archive_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S)"
 	local modpack_export=false
@@ -928,7 +930,7 @@ function mod_export() {
 		archive_name="$3"
 	fi
 
-	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log INFO "No mods installed."; exit 1; }
+	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
 
 	if [[ $modpack_export == false ]]; then
 		log PROMPT "Archive file will be saved to ${save_dir}/${archive_name}. Make? (Y/n): "
@@ -966,32 +968,57 @@ function mod_export() {
 }
 
 function mod_import() {
-	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_import_help; exit 0; }
+	parse_help_has_arguments display_help_import "$@"
+	local modpack=false; [[ "$1" == "--modpack" ]] && { modpack=true; shift 1; }
 
-	local modpack=false
-	[[ "$1" == "--modpack" ]] && { modpack=true; shift 1; }
-
+	# check if the file exists
 	[[ ! -f "$1" ]] && { log ERROR "File $1 does not exist."; exit 1; }
 
 	# reset mods before importing
-	if [[ $modpack == false ]]; then
-		log INFO "Importing mods will ${RED}reset${NC} your mods."
-		mod_reset
-	else
-		mod_reset --modpack
-	fi
+	[[ $modpack == false ]] && log INFO "Importing mods will ${RED}reset${NC} your mods."
+	mod_reset --no-path-reset
 
 	# extract in temp directory
 	OUT_DIR=$(mktemp -d)
 	tar -xzf "$1" -C "$OUT_DIR"
-
 	[[ $? -ne 0 ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; exit 1; }
 
+	# get the mods directory
 	MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
 	[[ ! -d "$MODS_EXPORT_DIR" ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; exit 1; }
 
-	# copy mods
-	cp "$MODS_EXPORT_DIR"/* "$MODS_DIR"
+	# fix breaking changes if the version number (from the first line) is different
+	db_version=$(head -n 1 "$MODS_EXPORT_DIR/mods.csv")
+	current_version=$(echo "$VERSION" | awk -F. '{print $2}')
+
+	[[ -z "$db_version" || ! "$db_version" =~ ^[0-9]+$ ]] && { log ERROR "Invalid version number inside mods.csv from imported archive."; exit 1; }
+
+	if [[ "$db_version" != "$current_version" ]]; then
+		log INFO "Import detected version 0.$db_version.x, current version is 0.$current_version.x."
+
+		# iterate from installed major number to latest major number
+		for ((i = db_version + 1; i <= current_version; i++)); do
+			if [[ -n "${breaking_changes_patches[$i]}" ]]; then
+				# apply breaking changes patch
+				eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$MODS_EXPORT_DIR:g")
+			else
+				log INFO "No breaking changes for version $i."
+				continue
+			fi
+
+			if [[ $? -ne 0 ]]; then
+				log ERROR "Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
+				read -er response
+
+				[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting." ; exit 1; }
+			else
+				log INFO "Version upgrade fix ${GREEN}successfully${NC} applied for version $i."
+			fi
+		done
+	fi
+
+	# copy everything in
+	cp -r "$MODS_EXPORT_DIR"/* "$MODS_DIR"
 
 	[[ $? -ne 0 ]] && { log ERROR "Failed to import mods."; exit 1; }
 
@@ -999,8 +1026,7 @@ function mod_import() {
 }
 
 function mod_order {
-	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_order_help; exit 0; }
-
+	parse_help_has_arguments display_help_order "$@"
 	local mod_name=""
 	local mod_index=""
 	local new_index=""
@@ -1008,14 +1034,13 @@ function mod_order {
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
-			-n)
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 				mod_name="$2"; shift 2
-				;;
-			--help|-h)
-				display_order_help; exit 0
 				;;
 			*)
 				new_index="$1"; shift 1
@@ -1054,23 +1079,23 @@ function mod_order {
 	declare -A replace_count
 	for file in $current_mod_files; do
 		extension=$(get_extension "$file")
-		basename=$(get_basename "$file")
+		base_name=$(get_basename "$file")
 
 		# if the file has no extension, add the basename to the hash table or increment the count
 		if [[ -z "$extension" ]]; then
-			replace_count["$basename"]=$(( ${replace_count["$basename"]:-0} + 1 ))
+			replace_count["$base_name"]=$(( ${replace_count["$base_name"]:-0} + 1 ))
 		fi
 	done
 
 	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
-	for basename in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$basename"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$basename\.patch_[^ ]*"); unset IFS
+	for base_name in "${!replace_count[@]}"; do
+		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
 	done
 
 	# step 2.2 - reverse sort the files_to_replace if we are in descending order
-	[[ $ascending_order == false ]] && for basename in "${!files_to_replace[@]}"; do
-		files_to_replace["$basename"]=$(echo "${files_to_replace["$basename"]}" | sort -rV)
+	[[ $ascending_order == false ]] && for base_name in "${!files_to_replace[@]}"; do
+		files_to_replace["$base_name"]=$(echo "${files_to_replace["$base_name"]}" | sort -rV)
 	done
 
 	# move current mod files to "t_$file" so we can move the new files to the correct index
@@ -1080,17 +1105,17 @@ function mod_order {
 	done
 
 	# step 3 - for every basename in files_to_replace, add replace_count to each file's patch number and move
-	for basename in "${!files_to_replace[@]}"; do
-		files=$(echo "${files_to_replace["$basename"]}" | tr ' ' '\n')
+	for base_name in "${!files_to_replace[@]}"; do
+		files=$(echo "${files_to_replace["$base_name"]}" | tr ' ' '\n')
 
 		for file in $files; do
-			basename=$(get_basename "$file")
+			base_name=$(get_basename "$file")
 			patch_number=$(get_patch_number "$file")
 			extension=$(get_extension "$file")
 
 			# if ascending order, subtract replace_count to the patch number, otherwise add
 			operation="-"; [[ $ascending_order == false ]] && operation="+"
-			new_file="${basename}.patch_$(($patch_number $operation ${replace_count["$basename"]}))${extension}"
+			new_file="${base_name}.patch_$(($patch_number $operation ${replace_count["$base_name"]}))${extension}"
 
 			mv "$MODS_DIR/$file" "$MODS_DIR/$new_file"
 			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
@@ -1104,12 +1129,12 @@ function mod_order {
 
 	# step 4 - for every file in current_mod_files, subtract the basename's array size of files_to_replace from the patch number
 	for file in $current_mod_files; do
-		basename=$(get_basename "$file")
+		base_name=$(get_basename "$file")
 		patch_number=$(get_patch_number "$file")
 		extension=$(get_extension "$file")
 
 		# get size of only files without an extension
-		size=$(echo "${files_to_replace["$basename"]}" | grep -E "${basename}.patch_[0-9]+$" | tr ' ' '\n' | wc -l)
+		size=$(echo "${files_to_replace["$base_name"]}" | grep -E "${base_name}.patch_[0-9]+$" | tr ' ' '\n' | wc -l)
 
 		# in case size is 0, move t_file back to file later
 		new_file=${file}
@@ -1117,7 +1142,7 @@ function mod_order {
 		if [[ $size -gt 0 ]]; then
 			# if ascending order, add size from the patch number, otherwise subtract
 			operation="+"; [[ $ascending_order == false ]] && operation="-"
-			new_file="${basename}.patch_$(($patch_number $operation $size))${extension}"
+			new_file="${base_name}.patch_$(($patch_number $operation $size))${extension}"
 
 			log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
 
@@ -1162,15 +1187,16 @@ function mod_order {
 		sed -i "$((new_index + 1))i $entry" "$DB_FILE"
 	fi
 
-	log INFO "Mod ${GREEN}successfully${NC} reindexed: $mod_name from $mod_index to $new_index."
+	log INFO "Mod ${GREEN}successfully${NC} reindexed: \"$mod_name\" went from $mod_index to $new_index."
 }
 
-# --- Modpacks management ---
+# --- Modpack management ---
 
 function modpack_list() {
-	[[ "$1" == "--help" || "$1" == "-h" ]] && { display_modpack_list_help; exit 0; }
+	parse_help_no_arguments display_help_modpack_list "$@"
 
-	[[ $(wc -l < "$MODPACKS_DB_FILE") -le 1 ]] && { log INFO "No modpacks saved."; return; }
+	# quit if no modpacks are saved
+	[[ $(wc -l < "$MODPACKS_DB_FILE") -le 1 ]] && { log INFO "No modpacks saved."; exit 0; }
 
 	log INFO "Saved modpacks:"
 
@@ -1180,9 +1206,8 @@ function modpack_list() {
 }
 
 function modpack_create() {
+	parse_help_no_arguments display_help_modpack_create "$@"
 	local modpack_name=""
-
-	[[ $# -eq 0 ]] && { display_modpack_create_help; exit 0; }
 
 	# if no mods are installed, exit
 	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
@@ -1234,7 +1259,7 @@ function modpack_create() {
 	mod_export --modpack "$MODPACKS_FOLDER" "$modpack_name"
 
 	log INFO "Modpack ${GREEN}successfully${NC} created: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
-	log INFO "Switch to the modpack with 'h2mm modpack-switch $modpack_name'."
+	log INFO "Switch to the modpack with 'h2mm modpack-switch -n \"$modpack_name\"'."
 
 	# warn user to create a modpack with his main mods
 	[[ $(wc -l < "$MODPACKS_DB_FILE") -le 1 ]] && log INFO "If this is your first modpack, it is ${ORANGE}recommended${NC} to create a separate modpack with your main mods."
@@ -1245,22 +1270,23 @@ function modpack_create() {
 }
 
 function modpack_switch() {
+	parse_help_has_arguments display_help_modpack_switch "$@"
 	local modpack_name=""
 	local modpack_index=""
-
-	[[ $# -eq 0 ]] && { display_modpack_switch_help; exit 0; }
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; exit 1; }
 				modpack_index="$2"; shift 2
 				;;
-			--help|-h)
-				display_modpack_switch_help; exit 0
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
+				modpack_name="$2"; shift 2
 				;;
 			*)
-				modpack_name="$1"; shift 1
+				$display_help; exit 0
 				;;
 		esac
 	done
@@ -1271,7 +1297,9 @@ function modpack_switch() {
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
 	log INFO "Switching modpacks mods will ${RED}reset${NC} your mods."
+	silent=true
 	mod_import --modpack "$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	silent=false
 
 	log INFO "Modpack ${GREEN}successfully${NC} switched: $modpack_name."
 
@@ -1281,10 +1309,7 @@ function modpack_switch() {
 }
 
 function modpack_reset() {
-	if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-		display_modpack_reset_help
-		exit 0
-	fi
+	parse_help_no_arguments display_help_modpack_reset "$@"
 
 	log PROMPT "Are you sure you want to ${RED}reset${NC} all installed modpacks? (Y/n): "
 	read confirm
@@ -1300,22 +1325,23 @@ function modpack_reset() {
 }
 
 function modpack_delete() {
+	parse_help_has_arguments display_help_modpack_delete "$@"
 	local modpack_name=""
 	local modpack_index=""
-
-	[[ $# -eq 0 ]] && { display_modpack_delete_help; exit 0; }
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; exit 1; }
 				modpack_index="$2"; shift 2
 				;;
-			--help|-h)
-				display_modpack_delete_help; exit 0
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
+				modpack_name="$2"; shift 2
 				;;
 			*)
-				modpack_name="$1"; shift 1
+				$display_help; exit 0
 				;;
 		esac
 	done
@@ -1334,42 +1360,41 @@ function modpack_delete() {
 }
 
 function modpack_overwrite() {
-	[[ $# -eq 0 ]] && { display_modpack_overwrite_help; exit 0; }
-
+	parse_help_has_arguments display_help_modpack_overwrite "$@"
 	local modpack_name=""
 	local modpack_index=""
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-			-i)
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; exit 1; }
 				modpack_index="$2"; shift 2
 				;;
-			--help|-h)
-				display_modpack_save_help; exit 0
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
+				modpack_name="$2"; shift 2
 				;;
 			*)
-				modpack_name="$1"; shift 1
+				$display_help; exit 0
 				;;
 		esac
 	done
 
-	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to save."; exit 1; }
+	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to overwrite."; exit 1; }
 
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
 	# if the modpack doesn't exist, exit
 	[[ ! -f "$MODPACKS_FOLDER/$modpack_name.tar.gz" ]] && { log ERROR "Modpack $modpack_name does not exist."; exit 1; }
 
-
 	rm -f "$MODPACKS_FOLDER/$modpack_name.tar.gz"
-
 	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; exit 1; }
 
 	# use built-in export function
 	mod_export --modpack "$MODPACKS_FOLDER" "$modpack_name"
 
-	log INFO "Modpack ${GREEN}successfully${NC} saved: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	log INFO "Modpack ${GREEN}successfully${NC} overwritten: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
 	sed -i "/^$modpack_index,/s/DISABLED/ENABLED/" "$MODPACKS_DB_FILE"
 }
 
@@ -1391,10 +1416,10 @@ function self_update() {
 # --- Main ---
 
 function main() {
-	[[ $# -lt 1 ]] && { display_help; exit 1; }
+	parse_help_has_arguments display_help_main "$@"
 
-	command="$1"
-	shift
+	command="$1"; shift
+
 	initialize_directories
 	initialize_modpack_directories
 	check_for_updates
@@ -1451,11 +1476,8 @@ function main() {
 		"update"|"up")
 			self_update
 			;;
-		"help"|"--help"|"-h"|"h")
-			display_help
-			;;
 		*)
-			display_help
+			$display_help
 			;;
 	esac
 }

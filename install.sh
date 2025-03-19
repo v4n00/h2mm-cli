@@ -44,6 +44,7 @@ EOF
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
     ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
+	["4"]='awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" | tee "$1/mods.csv" > /dev/null'
 )
 
 # notify if update is happening
@@ -105,10 +106,8 @@ else
 fi
 
 # handle breaking changes
-installed_major=""
-latest_major=""
-IFS='.' read -r _1 installed_major _2 <<< "$installed_version"
-IFS='.' read -r _1 latest_major _2 <<< "$latest_version"
+installed_major=$(echo "$installed_version" | awk -F. '{print $2}')
+latest_major=$(echo "$latest_version" | awk -F. '{print $2}')
 
 if [[ $latest_major -gt $installed_major ]]; then
 	log INFO ""
@@ -121,7 +120,15 @@ if [[ $latest_major -gt $installed_major ]]; then
 	target_dir="Steam/steamapps/common/Helldivers\ 2/data"
 	log INFO "Searching for the Helldivers 2 data directory... (20 seconds timeout)"
 
-	game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+	# check if game directory is in ~/.config/h2mm/h2path
+	if [[ -f "$HOME/.config/h2mm/h2path" ]]; then
+		game_dir=$(cat "$HOME/.config/h2mm/h2path")
+		[[ ! -d "$game_dir" ]] && { log ERROR "Helldivers 2 data directory in ~/.config/h2mm/h2path is not a valid directory." ; exit 1; }
+	else
+		game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+	fi
+
+	# if not found, prompt user
 	if [[ -z "$game_dir" ]]; then
 		log INFO "Could not find the Helldivers 2 data directory automatically."
 		log PROMPT "Please enter the path to the Helldivers 2 data directory: "
@@ -137,17 +144,20 @@ if [[ $latest_major -gt $installed_major ]]; then
 	# iterate from installed major number to latest major number
 	for ((i = installed_major + 1; i <= latest_major; i++)); do
 		if [[ -n "${breaking_changes_patches[$i]}" ]]; then
-			eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:")
+			# apply breaking changes patch
+			eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$game_dir:g")
 		else
 			log INFO "No breaking changes for version $i."
+			continue
 		fi
+
 		if [[ $? -ne 0 ]]; then
 			log ERROR "Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
 			read -er response
 
-			[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting. Uninstall the script, then retry the install script." ; exit 1; }
+			[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting." ; exit 1; }
 		else
-			log INFO "Successfully applied breaking changes patch for version $i."
+			log INFO "Version upgrade fix ${GREEN}successfully${NC} applied for version $i."
 		fi
 	done
 	log INFO ""
