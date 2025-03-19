@@ -119,6 +119,10 @@ if [[ $latest_major -gt $installed_major ]]; then
 	search_dir="${HOME}"
 	target_dir="Steam/steamapps/common/Helldivers\ 2/data"
 
+	# make backup
+	log INFO "Creating a backup in case anything goes wrong."
+	h2mm export
+
 	# check if game directory is in ~/.config/h2mm/h2path
 	if [[ -f "$HOME/.config/h2mm/h2path" ]]; then
 		game_dir=$(cat "$HOME/.config/h2mm/h2path")
