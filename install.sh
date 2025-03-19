@@ -118,13 +118,15 @@ if [[ $latest_major -gt $installed_major ]]; then
 	# find hd2 path
 	search_dir="${HOME}"
 	target_dir="Steam/steamapps/common/Helldivers\ 2/data"
-	log INFO "Searching for the Helldivers 2 data directory... (20 seconds timeout)"
 
 	# check if game directory is in ~/.config/h2mm/h2path
 	if [[ -f "$HOME/.config/h2mm/h2path" ]]; then
 		game_dir=$(cat "$HOME/.config/h2mm/h2path")
 		[[ ! -d "$game_dir" ]] && { log ERROR "Helldivers 2 data directory in ~/.config/h2mm/h2path is not a valid directory." ; exit 1; }
+
+		log INFO "Helldivers 2 data directory found: $game_dir."
 	else
+		log INFO "Searching for the Helldivers 2 data directory... (20 seconds timeout)"
 		game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 	fi
 
