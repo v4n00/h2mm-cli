@@ -130,8 +130,8 @@ if [[ $latest_major -gt $installed_major ]]; then
 
 		log INFO "Helldivers 2 data directory found: $game_dir."
 	else
-		log INFO "Searching for the Helldivers 2 data directory... (20 seconds timeout)"
-		game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+		log INFO "Searching for the Helldivers 2 data directory... (10 seconds timeout)"
+		game_dir=$(timeout 10 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 	fi
 
 	# if not found, prompt user

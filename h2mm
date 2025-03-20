@@ -11,11 +11,13 @@ NC='\033[0m'
 
 MODS_DIR=""
 DB_FILE=""
-MODPACKS_FOLDER=""
+MODPACKS_DIR=""
 MODPACKS_DB_FILE=""
 
-H2PATH="${HOME}/.config/h2mm/h2path"
-LAST_CHECKED_UPDATE_FILE="${HOME}/.config/h2mm/last_update"
+H2CONFIG_DIR="${HOME}/.config/h2mm"
+H2PATH_FILE="${H2CONFIG_DIR}/h2path"
+LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
+BACKUPS_DIR="${H2CONFIG_DIR}/backups"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 
 breaking_changes_patches=(
@@ -25,6 +27,10 @@ breaking_changes_patches=(
 )
 
 # --- Utility Functions ---
+
+function substitute_home() {
+	echo "${1/#\~/$HOME}"
+}
 
 function get_version_major() {
 	echo "$1" | awk -F. '{print $2}'
@@ -111,12 +117,8 @@ function get_mod_name_and_index() {
 	fi
 
 	if [[ -z "$entry" || -z "$mod_index" || -z "$mod_name" ]]; then
-		if [[ "$1" == "--do-not-exit" ]]; then
-			mod_index=-1
-		else
-			log ERROR "Mod not found."
-			exit 1
-		fi
+		[[ "$1" != "--do-not-exit" ]] && { log ERROR "Mod not found."; exit 1; }
+		mod_index=-1
 	fi
 
 	status=$(echo "$entry" | awk -F, '{print $2}')
@@ -131,43 +133,32 @@ function get_modpack_name_and_index() {
 		modpack_index=$(echo "$entry" | awk -F, '{print $1}' | head -1)
 	fi
 
-	if [[ -z "$entry" || -z "$modpack_index" || -z "$modpack_name" ]]; then
-		log ERROR "Modpack not found."
-		exit 1
-	fi
+	[[ -z "$entry" || -z "$modpack_index" || -z "$modpack_name" ]] && { log ERROR "Modpack not found."; exit 1; }
 }
 
 function find_game_directory() {
 	local search_dir="${HOME}"
-	local target_dir="Steam/steamapps/common/Helldivers\ 2/data"
+	local target_dir="steamapps/common/Helldivers\ 2/data"
 
 	# check if path is saved
-	if [[ -f "$H2PATH" ]]; then
-		saved_dir=$(cat "$H2PATH")
-		if [[ -d "$saved_dir" ]]; then
-			echo "$saved_dir"
-			return
-		else
-			log ERROR "Saved game directory is invalid. Proceeding to get a new directory."
-		fi
-	fi
+	saved_dir=$(cat "$H2PATH_FILE")
+	[[ -d "$saved_dir" ]] && { echo "$saved_dir"; return; }
 
 	# first time setup, or directory is not valid anymore
-	log INFO "Searching for the Helldivers 2 data directory... (20 seconds timeout)"
-	game_dir=$(timeout 20 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+	log INFO "Searching for the Helldivers 2 data directory... (10 seconds timeout)"
+	game_dir=$(timeout 10 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 
 	if [[ -z "$game_dir" ]]; then
 		log INFO "Could not find the Helldivers 2 data directory automatically."
 		log PROMPT "Please enter the path to the Helldivers 2 data directory: "
 		IFS= read -e game_dir
-		game_dir="$(realpath "${game_dir/#\~/$HOME}")"
+		game_dir="$(substitute_home "$game_dir")"
 
 		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
 	fi
 
 	# save path
-	mkdir -p "$(dirname "$H2PATH")"
-	echo "$game_dir" > "$H2PATH"
+	echo "$game_dir" > "$H2PATH_FILE"
 
 	[[ $? -ne 0 ]] && { log ERROR "Could not save game directory."; exit 1; }
 	log INFO "Game directory ${GREEN}saved${NC}: $game_dir"
@@ -176,7 +167,26 @@ function find_game_directory() {
 	echo "$game_dir"
 }
 
+function initialize_config_directory() {
+	mkdir -p "$H2CONFIG_DIR"
+	[[ $? -ne 0 ]] && { log ERROR "Could not create config directory ($H2CONFIG_DIR)."; exit 1; }
+
+	mkdir -p "$BACKUPS_DIR"
+	[[ $? -ne 0 ]] && { log ERROR "Could not create backups directory ($BACKUPS_DIR)."; exit 1; }
+
+	if [[ ! -f "$H2PATH_FILE" ]]; then
+		touch "$H2PATH_FILE"
+		[[ $? -ne 0 ]] && { log ERROR "Could not create path file."; exit 1; }
+	fi
+
+	if [[ ! -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
+		touch "$LAST_CHECKED_UPDATE_FILE"
+		[[ $? -ne 0 ]] && { log ERROR "Could not create last checked update file."; exit 1; }
+	fi
+}
+
 function initialize_directories() {
+	initialize_config_directory
 	MODS_DIR=$(find_game_directory)
 	DB_FILE="$MODS_DIR/mods.csv"
 
@@ -191,16 +201,36 @@ function initialize_directories() {
 }
 
 function initialize_modpack_directories() {
-	MODPACKS_FOLDER="$MODS_DIR/modpacks"
-	MODPACKS_DB_FILE="$MODPACKS_FOLDER/modpacks.csv"
+	MODPACKS_DIR="$MODS_DIR/modpacks"
+	MODPACKS_DB_FILE="$MODPACKS_DIR/modpacks.csv"
 
-	if [[ ! -d "$MODPACKS_FOLDER" || ! -f "$MODPACKS_DB_FILE" ]]; then
-		mkdir -p "$MODPACKS_FOLDER" && touch "$MODPACKS_DB_FILE"
+	if [[ ! -d "$MODPACKS_DIR" || ! -f "$MODPACKS_DB_FILE" ]]; then
+		mkdir -p "$MODPACKS_DIR" && touch "$MODPACKS_DB_FILE"
 		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks folder/file."; exit 1; }
 
 		echo "$VERSION" | awk -F. '{print $2}' > "$MODPACKS_DB_FILE"
-		log INFO "Modpacks folder and file ${GREEN}created${NC}: $MODPACKS_FOLDER"
+		log INFO "Modpacks folder and file ${GREEN}created${NC}: $MODPACKS_DIR"
 	fi
+}
+
+function check_for_updates() {
+	last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
+	if [[ -n "$last_update" && "$(date +%s)" -lt $(("$(date +%s -d "$last_update")" + 3600)) ]]; then
+		return
+	fi
+
+	latest_version=$(curl -sS "$VERSION_URL")
+	if [[ $? -ne 0 ]]; then
+		log ERROR "Could not check for updates."
+		return
+	fi
+
+	if [[ "$latest_version" != "$VERSION" ]]; then
+		log INFO "A new version of h2mm is available: $VERSION -> $latest_version"
+		log INFO "Run \"h2mm update\" to update."
+	fi
+
+	echo "$(date)" > "$LAST_CHECKED_UPDATE_FILE"
 }
 
 # --- Help Functions ---
@@ -393,33 +423,6 @@ EOF
 }
 
 # --- Main Functions ---
-
-# Check for updates
-
-function check_for_updates() {
-	if [[ -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
-		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
-		if [[ "$(date +%s)" -lt $(("$(date +%s -d "$last_update")" + 3600)) ]]; then
-			return
-		fi
-	else
-		echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
-		exit 0
-	fi
-
-	latest_version=$(curl -sS "$VERSION_URL")
-	if [[ $? -ne 0 ]]; then
-		log ERROR "Could not check for updates."
-		return
-	fi
-
-	if [[ "$latest_version" != "$VERSION" ]]; then
-		log INFO "A new version of h2mm is available: $VERSION -> $latest_version"
-		log INFO "Run \"h2mm update\" to update."
-	fi
-
-	echo "$(date +%Y-%m-%dT%H:%M:%S)" > "$LAST_CHECKED_UPDATE_FILE"
-}
 
 # Upgrade/downgrade logic
 
@@ -655,7 +658,7 @@ function mod_reset() {
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		rm -f "$MODS_DIR"/*.patch_*
 		rm -f "$DB_FILE"
-		[[ $no_path_reset == false ]] && rm -f "$H2PATH"
+		[[ $no_path_reset == false ]] && rm -f "$H2PATH_FILE"
 		log INFO "Mods ${GREEN}successfully${NC} reset."
 	else
 		log INFO "Reset cancelled."
@@ -919,8 +922,8 @@ function mod_list() {
 
 function mod_export() {
 	parse_help_no_arguments display_help_export "$@"
-	local save_dir=$(pwd)
-	local archive_name="Helldivers_2_Mods_$(date +%Y-%m-%d_%H-%M-%S)"
+	local save_dir=${BACKUPS_DIR}
+	local archive_name="HD2-Mods-$(date +%Y-%m-%d_%H-%M-%S)"
 	local modpack_export=false
 	local force=false
 
@@ -933,9 +936,14 @@ function mod_export() {
 	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
 
 	if [[ $modpack_export == false ]]; then
-		log PROMPT "Archive file will be saved to ${save_dir}/${archive_name}. Make? (Y/n): "
-		read -r confirm
+		log PROMPT "Archive file will be saved to directory ${save_dir}. Make? (Y/n/path): "
+		read -e confirm
 	fi
+
+	[[ ! "$confirm" =~ ^[YyNn]$ && -n "$confirm" && $modpack_export == false ]] && { save_dir=$(substitute_home "$confirm"); confirm=""; }
+
+	[[ -d "$save_dir" ]] || { log ERROR "Directory $save_dir does not exist."; exit 1; }
+
 	if [[ $modpack_export == true || "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		# create a temporary directory to store the mods
 		OUT_DIR=$(mktemp -d)
@@ -946,7 +954,7 @@ function mod_export() {
 		# copy modpacks if modpack_export is false
 		if [[ $modpack_export == false ]]; then
 			mkdir -p "$MODS_EXPORT_DIR/modpacks"
-			cp "$MODPACKS_FOLDER"/* "$MODS_EXPORT_DIR/modpacks"
+			cp "$MODPACKS_DIR"/* "$MODS_EXPORT_DIR/modpacks"
 		fi
 
 		[[ $? -ne 0 ]] && { log ERROR "Could not copy mods to target directory."; exit 1; }
@@ -1008,7 +1016,7 @@ function mod_import() {
 
 			if [[ $? -ne 0 ]]; then
 				log ERROR "Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
-				read -er response
+				read response
 
 				[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting." ; exit 1; }
 			else
@@ -1206,14 +1214,27 @@ function modpack_list() {
 }
 
 function modpack_create() {
-	parse_help_no_arguments display_help_modpack_create "$@"
+	parse_help_has_arguments display_help_modpack_create "$@"
 	local modpack_name=""
+
+	# parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
+				modpack_name="$2"; shift 2
+				;;
+			*)
+				$display_help; exit 0
+				;;
+		esac
+	done
 
 	# if no mods are installed, exit
 	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
 
 	# if the same modpack name already exists, exit
-	[[ -f "$MODPACKS_FOLDER/$1.tar.gz" ]] && { log ERROR "Modpack $1 already exists."; exit 1; }
+	[[ -f "$MODPACKS_DIR/$1.tar.gz" ]] && { log ERROR "Modpack $1 already exists."; exit 1; }
 
 	# let user select mods to save
 	mod_list
@@ -1235,7 +1256,7 @@ function modpack_create() {
 		OLD_MODS_DIR="$MODS_DIR"
 		MODS_DIR="$(mktemp -d)"
 		DB_FILE="$MODS_DIR/mods.csv"
-		echo "$VERSION" > "$DB_FILE"
+		echo "$(get_version_major "$VERSION")" > "$DB_FILE"
 
 		# install selected mods to temp directory
 		for entry in "${mod_entries[@]}"; do
@@ -1255,10 +1276,9 @@ function modpack_create() {
 	fi
 
 	# use built-in export function
-	modpack_name="$1"
-	mod_export --modpack "$MODPACKS_FOLDER" "$modpack_name"
+	mod_export --modpack "$MODPACKS_DIR" "$modpack_name"
 
-	log INFO "Modpack ${GREEN}successfully${NC} created: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	log INFO "Modpack ${GREEN}successfully${NC} created: $modpack_name"
 	log INFO "Switch to the modpack with 'h2mm modpack-switch -n \"$modpack_name\"'."
 
 	# warn user to create a modpack with his main mods
@@ -1298,7 +1318,7 @@ function modpack_switch() {
 
 	log INFO "Switching modpacks mods will ${RED}reset${NC} your mods."
 	silent=true
-	mod_import --modpack "$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	mod_import --modpack "$MODPACKS_DIR/$modpack_name.tar.gz"
 	silent=false
 
 	log INFO "Modpack ${GREEN}successfully${NC} switched: $modpack_name."
@@ -1314,9 +1334,11 @@ function modpack_reset() {
 	log PROMPT "Are you sure you want to ${RED}reset${NC} all installed modpacks? (Y/n): "
 	read confirm
 	if [[ "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
-		rm -f "$MODPACKS_FOLDER"/*.tar.gz
+		rm -f "$MODPACKS_DIR"/*.tar.gz
 		rm -f "$MODPACKS_DB_FILE"
-		rmdir "$MODPACKS_FOLDER"
+		rmdir "$MODPACKS_DIR"
+
+		[[ $? -ne 0 ]] && { log ERROR "Could not reset modpacks."; exit 1; }
 		log INFO "Modpacks ${GREEN}successfully${NC} reset."
 	else
 		log INFO "Reset cancelled."
@@ -1350,7 +1372,7 @@ function modpack_delete() {
 
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
-	rm -f "$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	rm -f "$MODPACKS_DIR/$modpack_name.tar.gz"
 
 	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; exit 1; }
 	log INFO "Modpack ${GREEN}successfully${NC} deleted: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
@@ -1386,13 +1408,13 @@ function modpack_overwrite() {
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
 	# if the modpack doesn't exist, exit
-	[[ ! -f "$MODPACKS_FOLDER/$modpack_name.tar.gz" ]] && { log ERROR "Modpack $modpack_name does not exist."; exit 1; }
+	[[ ! -f "$MODPACKS_DIR/$modpack_name.tar.gz" ]] && { log ERROR "Modpack $modpack_name does not exist."; exit 1; }
 
-	rm -f "$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	rm -f "$MODPACKS_DIR/$modpack_name.tar.gz"
 	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; exit 1; }
 
 	# use built-in export function
-	mod_export --modpack "$MODPACKS_FOLDER" "$modpack_name"
+	mod_export --modpack "$MODPACKS_DIR" "$modpack_name"
 
 	log INFO "Modpack ${GREEN}successfully${NC} overwritten: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
 	sed -i "/^$modpack_index,/s/DISABLED/ENABLED/" "$MODPACKS_DB_FILE"
