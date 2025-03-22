@@ -6,6 +6,13 @@ This script is complete, the version will always [remain at 0.x.x](https://0ver.
 
 ## Installation
 
+Pre-requisites:
+
+- You must have the `unzip` package installed for zip archives;
+- You might want to have the `unarchiver` package installed for rar archives.
+
+> The `unzip` package comes pre-installed on most Linux distributions. If you do not know how to install packages, search for your Linux distro and package manager.
+
 To install Helldivers 2 Mod Manager CLI run the following command in your terminal:
 
 ```bash
@@ -19,7 +26,8 @@ If for some reason, the installation command doesn't work you can:
 
 1. Go to <https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh>
 1. Right click -> Save page as...
-1. Go to your downloads folders `cd ~/Downloads`
+1. Open your terminal
+1. Go to your downloads folders with `cd ~/Downloads`
 1. Give the script execution permissions `chmod +x install.sh`
 1. Run the script `./install.sh`
 

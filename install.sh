@@ -179,5 +179,12 @@ sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
 log INFO ""
 
 [[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
-log INFO "Helldivers 2 Mod Manager CLI ${GREEN}successfully${NC} installed: $DESTINATION_PATH/$SCRIPT_NAME."
-log INFO "Use it by running '$SCRIPT_NAME'. Made with love <3 by v4n and contributors."
+
+log INFO "Helldivers 2 Mod Manager CLI ${GREEN}successfully${NC} installed."
+log INFO "${GREEN}IMPORTANT${NC}: To install mods, you need to have installed:"
+log INFO " -> \"unzip\" package for .zip archives"
+log INFO " -> \"unarchiver\" package for .rar archives"
+log INFO "If you do not know how to install these packages, please search for your linux distro on how to install packages."
+log INFO ""
+log INFO "Use the mod manager by running '$SCRIPT_NAME' in your terminal."
+log INFO "Made with love <3 by v4n and contributors."

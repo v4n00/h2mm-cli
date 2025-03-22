@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.4.1"
+VERSION="0.4.2"
 
 # --- Globals ---
 
@@ -672,6 +672,7 @@ function mod_install() {
 	local mod_dir=()
 	local mod_files=()
 	local mod_zip=()
+	local is_rar=false
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
@@ -681,8 +682,9 @@ function mod_install() {
 			mod_name="$2"; shift 2
 			;;
 		*)
-			if [[ -f "$1" && "$1" == *.zip ]]; then
+			if [[ -f "$1" && ( "$1" == *.zip || "$1" == *.rar ) ]]; then
 				mod_zip+=("$1")
+				[[ "$1" == *.rar ]] && is_rar=true
 			elif [[ -d "$1" ]]; then
 				mod_dir+=("$1")
 			else
@@ -714,7 +716,11 @@ function mod_install() {
 
 	# if zip, extract the zip file and pass it to mod dirs
 	if [[ -n "$mod_zip" ]]; then
-		command -v unzip &> /dev/null || { log ERROR "unzip package is not installed."; exit 1; }
+		if [[ $is_rar == true ]]; then
+			command -v unar &> /dev/null || { log ERROR "Rar archive could not be extracted because package \"unarchiver\" is not installed."; exit 1; }
+		else
+			command -v unzip &> /dev/null || { log ERROR "Zip archive could not be extracted because package \"unzip\" is not installed."; exit 1; }
+		fi
 
 		[[ ! -f "$mod_zip" ]] && { log ERROR "Zip file $mod_zip does not exist."; exit 1; }
 
@@ -725,7 +731,11 @@ function mod_install() {
 
 		# mod_dir as a temporary directory
 		mod_dir+=$(mktemp -d)
-		unzip -qq "$mod_zip" -d "$mod_dir"
+		if [[ $is_rar == true ]]; then
+			unar -q "$mod_zip" -o "$mod_dir"
+		else
+			unzip -qq "$mod_zip" -d "$mod_dir"
+		fi
 	fi
 
 	# if there's more than 1 directory, call recursively
