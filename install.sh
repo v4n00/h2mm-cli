@@ -82,14 +82,17 @@ if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
     if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
         # add ~/.local/bin to PATH
         log INFO "Installing the script on a Steam Deck means adding $DESTINATION_PATH to your \$PATH."
-        log INFO "If you're using a different shell than bash, you may need to add it manually."
+        log INFO "If you're using a different shell than bash (the default), you may need to add it manually."
 
 		log PROMPT "Do you want to add $DESTINATION_PATH to your \$PATH in ~/.bashrc? (Y/n): "
         IFS= read -e response
         if [[ "$response" == "y" || "$response" = "Y" || -z "$response" ]]; then
             echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.bashrc"
-
 			[[ $? -ne 0 ]] && { log ERROR "Failed to add $DESTINATION_PATH to \$PATH in ~/.bashrc." ; exit 1; }
+
+			source "$HOME/.bashrc"
+			[[ $? -ne 0 ]] && { log ERROR "Failed to source ~/.bashrc." ; exit 1; }
+
             log INFO "Added $DESTINATION_PATH to your \$PATH in ~/.bashrc."
         fi
     fi
