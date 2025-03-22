@@ -205,11 +205,14 @@ function initialize_modpack_directories() {
 	MODPACKS_DB_FILE="$MODPACKS_DIR/modpacks.csv"
 
 	if [[ ! -d "$MODPACKS_DIR" || ! -f "$MODPACKS_DB_FILE" ]]; then
-		mkdir -p "$MODPACKS_DIR" && touch "$MODPACKS_DB_FILE"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks folder/file."; exit 1; }
+		mkdir -p "$MODPACKS_DIR"
+		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks directory."; exit 1; }
+
+		touch "$MODPACKS_DB_FILE"
+		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks database file."; exit 1; }
 
 		echo "$VERSION" | awk -F. '{print $2}' > "$MODPACKS_DB_FILE"
-		log INFO "Modpacks folder and file ${GREEN}created${NC}: $MODPACKS_DIR"
+		log INFO "Modpacks directory and file ${GREEN}created${NC}: $MODPACKS_DB_FILE"
 	fi
 }
 
@@ -373,6 +376,8 @@ Usage: h2mm modpack-list
 List all installed modpacks.
 Database of modpacks is stored in Steam/steamapps/common/Helldivers\ 2/data/modpacks/modpacks.csv
 You can rename, delete, or edit this file to manage modpacks manually.
+Options:
+	-v		Verbose mode.
 EOF
 }
 
@@ -916,6 +921,13 @@ function mod_list() {
 	# quit if no mods are installed
     [[ $(wc -l < "$DB_FILE") -le 1 ]] && { log INFO "No mods installed."; exit 0; }
 
+	# check if a modpack is enabled
+	modpack_entry=$(grep "ENABLED" "$MODPACKS_DB_FILE")
+	if [[ -n "$modpack_entry" ]]; then
+		modpack_name=$(echo "$modpack_entry" | awk -F, '{print $3}')
+		log INFO "Modpack ${GREEN}enabled${NC}: $modpack_name."
+	fi
+
     log INFO "Installed mods:"
 
     awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -F, 'NR > 1 {
@@ -1212,15 +1224,42 @@ function mod_order {
 
 function modpack_list() {
 	parse_help_no_arguments display_help_modpack_list "$@"
+	local verbose=false
+
+	# parse arguments
+	[[ "$1" == "--verbose" || "$1" == "-v" ]] && verbose=true
 
 	# quit if no modpacks are saved
 	[[ $(wc -l < "$MODPACKS_DB_FILE") -le 1 ]] && { log INFO "No modpacks saved."; exit 0; }
 
+	if [[ $verbose == true ]]; then
+		modpack_contents=""
+
+		# get modpack files
+		modpack_files=$(awk -F, 'NR > 1 {print $3 ".tar.gz"}' "$MODPACKS_DB_FILE")
+
+		for file in $modpack_files; do
+			mods=$(tar -xzvf "$MODPACKS_DIR/$file" --to-stdout "Helldivers 2 Mods/mods.csv" 2>/dev/null | awk -F, 'NR > 1 {print "   -> " $3}')
+
+			modpack_contents="${modpack_contents}${mods};"
+		done
+	fi
+
 	log INFO "Saved modpacks:"
 
-	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -F, 'NR > 1{
+	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -v modpack_contents="$modpack_contents" -F, 'BEGIN {
+		if(verbose == "true") {
+			split(modpack_contents, modpack_array, ";")
+		}
+	}
+	NR > 1{
 	color = ($2 == "DISABLED") ? RED : GREEN;
-	printf "%2s. [%s%s%s] %s\n", $1, color, $2, NC, $3}' "$MODPACKS_DB_FILE"
+	if (verbose == "false") {
+		$4 = "";
+	} else {
+		$4 = "\n" modpack_array[NR - 1];
+	}
+	printf "%2s. [%s%s%s] %s%s\n", $1, color, $2, NC, $3, $4}' "$MODPACKS_DB_FILE"
 }
 
 function modpack_create() {
@@ -1262,7 +1301,7 @@ function modpack_create() {
 			IFS= mod_entries+=($(awk -v idx=$index -F, 'NR > 1 && $1 == idx {print $0}' "$DB_FILE")); unset IFS
 		done
 
-		# overwrite all paths to create a custom folder that will hold the mods specified, the mods will be "installed" there
+		# overwrite all paths to create a custom directory that will hold the mods specified, the mods will be "installed" there
 		OLD_MODS_DIR="$MODS_DIR"
 		MODS_DIR="$(mktemp -d)"
 		DB_FILE="$MODS_DIR/mods.csv"
@@ -1385,7 +1424,7 @@ function modpack_delete() {
 	rm -f "$MODPACKS_DIR/$modpack_name.tar.gz"
 
 	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; exit 1; }
-	log INFO "Modpack ${GREEN}successfully${NC} deleted: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	log INFO "Modpack ${GREEN}successfully${NC} deleted: \$MODPACKS_DIRECTORY/$modpack_name.tar.gz"
 
 	# remove entry from database
 	sed -i "/^$modpack_index,/d" "$MODPACKS_DB_FILE"
@@ -1426,7 +1465,7 @@ function modpack_overwrite() {
 	# use built-in export function
 	mod_export --modpack "$MODPACKS_DIR" "$modpack_name"
 
-	log INFO "Modpack ${GREEN}successfully${NC} overwritten: \$MODPACKS_FOLDER/$modpack_name.tar.gz"
+	log INFO "Modpack ${GREEN}successfully${NC} overwritten: \$MODPACKS_DIRECTORY/$modpack_name.tar.gz"
 	sed -i "/^$modpack_index,/s/DISABLED/ENABLED/" "$MODPACKS_DB_FILE"
 }
 
