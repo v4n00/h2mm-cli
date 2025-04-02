@@ -687,7 +687,7 @@ function mod_install() {
 			mod_name="$2"; shift 2
 			;;
 		*)
-			if [[ -f "$1" && ( "$1" == *.zip || "$1" == *.rar ) ]]; then
+			if [[ "$1" == *.zip || "$1" == *.rar ]]; then
 				mod_zip+=("$1")
 				[[ "$1" == *.rar ]] && is_rar=true
 			elif [[ -d "$1" ]]; then
@@ -727,7 +727,13 @@ function mod_install() {
 			command -v unzip &> /dev/null || { log ERROR "Zip archive could not be extracted because package \"unzip\" is not installed."; exit 1; }
 		fi
 
-		[[ ! -f "$mod_zip" ]] && { log ERROR "Zip file $mod_zip does not exist."; exit 1; }
+		if [[ ! -f "$mod_zip" ]]; then
+			log ERROR "File $mod_zip does not exist."
+			log INFO "Are you sure the file exists? Check with 'ls -l'."
+			log INFO "If yes, check if it's written correctly, you must escape special characters like spaces and quotes."
+			log INFO "Simplest way to do this is to type a few letters and then press Tab to auto-complete the name."
+			exit 1
+		fi
 
 		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
 		if [[ -z "$mod_name" ]]; then
@@ -805,16 +811,17 @@ function mod_install() {
 	fi
 
 	# verify minimum information required
-	[[ -z "$mod_name" || ${#mod_files[@]} -eq 0 ]] && { log ERROR "Mod name and files are required."; exit 1; }
-
-	# verify duplicate mod names
-	get_mod_name_and_index --do-not-exit
-	[[ $mod_index -ne -1 ]] && { log ERROR "The mod '$mod_name' is already installed."; exit 1; }
+	[[ ${#mod_files[@]} -eq 0 ]] && { log ERROR "No mod files found."; exit 1; }
+	[[ -z "$mod_name" ]] && { log ERROR "Mod name is required."; exit 1; }
 
 	# verify mod files exist
 	for file in "${mod_files[@]}"; do
 		[[ ! -f "$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 	done
+
+	# verify duplicate mod names
+	get_mod_name_and_index --do-not-exit
+	[[ $mod_index -ne -1 ]] && { log ERROR "The mod '$mod_name' is already installed."; exit 1; }
 
 	# store the target files so we can put them in the database later
 	target_files=()
