@@ -16,6 +16,7 @@ MODPACKS_DB_FILE=""
 
 H2CONFIG_DIR="${HOME}/.config/h2mm"
 H2PATH_FILE="${H2CONFIG_DIR}/h2path"
+API_KEY_FILE="${H2CONFIG_DIR}/apikey"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
@@ -1491,6 +1492,93 @@ function self_update() {
 	exit 0
 }
 
+# --- Nexus Mods Integration ---
+
+function nexus_setup() {
+	parse_help_no_arguments display_help_nexus_setup "$@"
+	local nexus_api_key=""
+
+	log INFO "This is the setup wizard for the Nexus Mods integration."
+	log INFO "You need to provide your Nexus Mods API key to use this feature."
+	log INFO "You can find your API key in your Nexus Mods by:"
+	log INFO " -> Going to Site Preferences -> API Keys"
+	log INFO " -> Going to https://next.nexusmods.com/settings/api-keys"
+	log INFO "Scroll down, and click the Copy button next to your API key"
+	log INFO ""
+	log PROMPT "Enter your Nexus Mods API key: "
+	read -e nexus_api_key
+
+	[[ -z "$nexus_api_key" ]] && { log ERROR "Nexus Mods API key is required."; exit 1; }
+
+	# save api key to config dir
+	echo "$nexus_api_key" > "$API_KEY_FILE"
+	[[ $? -ne 0 ]] && { log ERROR "Could not save Nexus Mods API key."; exit 1; }
+
+	log INFO "Nexus Mods API key ${GREEN}successfully${NC} saved."
+	log INFO ""
+
+	# ask for default terminal
+	local terminal_command=""
+
+	log INFO "Now the manager needs to create a desktop entry for h2mm."
+	log INFO "In order to do that, it needs to know which terminal you are using."
+	log INFO "You need to provide the command which spawns your preffered terminal."
+	log INFO "Here's a list of supported terminals:"
+	log INFO " -> gnome-terminal (On GNOME systems like Ubuntu)"
+	log INFO " -> konsole (On KDE systems like SteamOS, Steam Deck uses this by default)"
+	log INFO " -> alacritty"
+	log INFO " -> kitty"
+	log INFO ""
+	log INFO "If you are not using any of these terminals, you need to provide"
+	log INFO "the command to spawn your terminal along with the flags to run"
+	log INFO "a command inside of it. For example, if you are using xfce4-terminal:"
+	log INFO "xfce4-terminal -e <COMMAND>"
+	log INFO ""
+	log INFO "To test if the command is valid, the manager spawn a terminal and"
+	log INFO "display \"Press any key to continue...\" inside of it."
+	log INFO "If the terminal quits successfully, the command is valid."
+	log INFO ""
+	log PROMPT "Enter your terminal command: "
+	read -e terminal_command
+
+	[[ -z "$terminal_command" ]] && { log ERROR "Terminal command is required."; exit 1; }
+
+	# check the 4 supported terminals
+	case "$terminal_command" in
+		"gnome-terminal")
+			terminal_command="$terminal_command -- <COMMAND>"
+			;;
+		"konsole"|"alacritty"|"kitty")
+			terminal_command="$terminal_command -e <COMMAND>"
+			;;
+	esac
+
+	# test terminal -e command
+	wait_command="read -p 'Press any key to continue...'"
+	test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
+	$test_command
+	[[ $? -ne 0 ]] && { log ERROR "Terminal command is invalid."; exit 1; }
+
+	# build terminal command
+	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/h2mm nexus/")
+
+	# build the desktop entry
+	local desktop_entry="[Desktop Entry]
+Name=Helldivers 2 Mod Manager
+Comment=Link application to be used with Nexus Mods
+Exec=$terminal_command
+Terminal=false
+Type=Application
+Categories=Game;
+MimeType=x-scheme-handler/nxm;"
+
+}
+
+function nexus() {
+	log INFO "Ran with: $1"
+	read -p "Press any key to continue..."
+}
+
 # --- Main ---
 
 function main() {
@@ -1544,6 +1632,12 @@ function main() {
 			;;
 		"modpack-reset"|"mr")
 			modpack_reset "$@"
+			;;
+		"nexus-setup")
+			nexus_setup "$@"
+			;;
+		"nexus")
+			nexus "$@"
 			;;
 		"reset"|"r")
 			mod_reset "$@"
