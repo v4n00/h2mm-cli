@@ -16,9 +16,10 @@ MODPACKS_DB_FILE=""
 
 H2CONFIG_DIR="${HOME}/.config/h2mm"
 H2PATH_FILE="${H2CONFIG_DIR}/h2path"
-API_KEY_FILE="${H2CONFIG_DIR}/apikey"
+API_KEY_FILE="${H2CONFIG_DIR}/api_key"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
+DOWNLOADS_DIR="${HOME}/Downloads"
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 
 breaking_changes_patches=(
@@ -96,6 +97,12 @@ function log() {
 }
 
 # --- Functions ---
+
+function get_nexus_api_key() {
+	[[ ! -f "$API_KEY_FILE" ]] && { log ERROR "Nexus API key file not found. Please run h2mm nexus-setup."; exit 1; }
+	api_key=$(cat "$API_KEY_FILE")
+	[[ -z "$api_key" ]] && { log ERROR "Nexus API key is empty. Please run h2mm nexus-setup."; exit 1; }
+}
 
 function remove_disabled_prefix() {
 	local disabledFile="$1"
@@ -258,6 +265,7 @@ Commands:
 	mc, modpack-delete				Delete a modpack.
 	mo, modpack-overwrite				Overwrite a modpack.
 	mr, modpack-reset				Reset all installed modpacks.
+	ns, nexus-setup				Setup nexusmods integration.
 	up, update					Update h2mm to the latest version.
 	r, reset					Reset all installed mods.
 	help						Display this help message.
@@ -425,6 +433,16 @@ Overwrite a modpack (the mods that it uses) by name or index.
 Options:
 	-n "MODPACK_NAME"	Name of the modpack to overwrite.
 	-i index		Index of the modpack to overwrite.
+EOF
+}
+
+function display_help_nexus_setup() {
+	cat << EOF
+Usage: h2mm nexus-setup
+Setup nexusmods integration.
+This will create a config file in ~/.config/h2mm/apikey with the API key.
+This will create a desktop entry in ~/.local/share/applications/h2mm.desktop.
+Run this again in case you change the API key or want to change the desktop entry.
 EOF
 }
 
@@ -1510,8 +1528,8 @@ function nexus_setup() {
 
 	[[ -z "$nexus_api_key" ]] && { log ERROR "Nexus Mods API key is required."; exit 1; }
 
-	# save api key to config dir
-	echo "$nexus_api_key" > "$API_KEY_FILE"
+	# save api key to config dir, trim it
+	echo "$nexus_api_key" | tr -d '[:space:]' > "$API_KEY_FILE"
 	[[ $? -ne 0 ]] && { log ERROR "Could not save Nexus Mods API key."; exit 1; }
 
 	log INFO "Nexus Mods API key ${GREEN}successfully${NC} saved."
@@ -1525,7 +1543,7 @@ function nexus_setup() {
 	log INFO "You need to provide the command which spawns your preffered terminal."
 	log INFO "Here's a list of supported terminals:"
 	log INFO " -> gnome-terminal (On GNOME systems like Ubuntu)"
-	log INFO " -> konsole (On KDE systems like SteamOS, Steam Deck uses this by default)"
+	log INFO " -> konsole (On KDE systems like SteamOS, Steam Deck's default)"
 	log INFO " -> alacritty"
 	log INFO " -> kitty"
 	log INFO ""
@@ -1542,6 +1560,7 @@ function nexus_setup() {
 	read -e terminal_command
 
 	[[ -z "$terminal_command" ]] && { log ERROR "Terminal command is required."; exit 1; }
+	command -v "$(echo "$terminal_command" | awk '{print $1}')" >/dev/null 2>&1 || { log ERROR "Terminal command does not work."; exit 1; }
 
 	# check the 4 supported terminals
 	case "$terminal_command" in
@@ -1572,10 +1591,72 @@ Type=Application
 Categories=Game;
 MimeType=x-scheme-handler/nxm;"
 
+	local desktop_file="$HOME/.local/share/applications/h2mm.desktop"
+
+	# create the desktop entry file
+	echo "$desktop_entry" > "$desktop_file"
+	[[ $? -ne 0 ]] && { log ERROR "Could not create desktop entry."; exit 1; }
+
+	log INFO "Desktop entry ${GREEN}successfully${NC} created."
+	log INFO "Your system needs to refresh the desktop database to use the new entry."
+	log INFO "This requires sudo permissions. Please enter your password."
+
+	sudo update-desktop-database
+	[[ $? -ne 0 ]] && { log ERROR "Could not refresh desktop database."; exit 1; }
+
+	log INFO "You can now use the Nexus Mods integration."
+	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
 }
 
 function nexus() {
-	log INFO "Ran with: $1"
+	local mod_nxm_link="$1"
+
+	[[ -z "$mod_nxm_link" ]] && { log ERROR "Nexus Mods nxm link is required."; exit 1; }
+	[[ ! "$mod_nxm_link" =~ ^nxm://helldivers2/mods/[0-9]+/files/[0-9]+\?key=.*\&expires=[0-9]+\&user_id=[0-9]+$ ]] && { log ERROR "Invalid Nexus Mods nxm link."; exit 1; }
+
+	log INFO "Received NXM link: $mod_nxm_link"
+
+	# api_key
+	get_nexus_api_key
+
+	# extract info
+	mod_id=$(echo "$mod_nxm_link" | awk -F/ '{print $5}')
+	mod_file_id=$(echo "$mod_nxm_link" | awk -F/ '{print $7}' | cut -d\? -f1)
+	key=$(echo "$mod_nxm_link" | awk -F= '{print $2}' | cut -d\& -f1)
+	expires=$(echo "$mod_nxm_link" | awk -F= '{print $3}' | cut -d\& -f1)
+
+	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$mod_id/files/$mod_file_id/download_link.json?key=$key&expires=$expires"
+	log INFO "Using API URL: $api_url"
+
+	response=$(curl -sS -H "apikey: $api_key" "$api_url")
+	log INFO "Received response from Nexus Mods API: $response"
+
+	# extract file name
+	file_name=$(echo "$response" | awk -F/ '{print $6}' | cut -d\? -f1)
+	output_file="$DOWNLOADS_DIR/$file_name"
+
+	# checks
+	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
+	[[ -z "$response" ]] && { log ERROR "Empty response from Nexus Mods API."; exit 1; }
+	[[ "$response" =~ "Please provide a valid API Key" || "$response" =~ "Invalid API Key" ]] && { log ERROR "Invalid Nexus Mods API key."; exit 1; }
+	[[ "$response" =~ "Please provide an authentication method" ]] && { log ERROR "Nexus Mods API key is missing."; exit 1; }
+	[[ ! "$response" =~ "URI" || ! "$response" =~ "https://files.nexus-cdn.com" ]] && { log ERROR "Invalid response from Nexus Mods API."; exit 1; }
+
+	# extract URI
+	download_url=$(printf "$response" | sed -E 's/.*"URI":"([^"]+)".*/\1/' | sed 's/\ /%20/g')
+	log INFO "Using download URL: $download_url"
+	log INFO ""
+
+	# download the file
+	log INFO "Download progress:"
+	curl -Lo "$output_file" "$download_url"
+	[[ $? -ne 0 ]] && { log ERROR "Download failed."; exit 1; }
+
+	log INFO "Download ${GREEN}successfully${NC} completed: $output_file"
+	log INFO ""
+
+	mod_install "$output_file"
+
 	read -p "Press any key to continue..."
 }
 
@@ -1633,7 +1714,7 @@ function main() {
 		"modpack-reset"|"mr")
 			modpack_reset "$@"
 			;;
-		"nexus-setup")
+		"nexus-setup"|"ns")
 			nexus_setup "$@"
 			;;
 		"nexus")
