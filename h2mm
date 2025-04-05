@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
-VERSION="0.4.2"
+VERSION="0.5.0"
 
 # --- Globals ---
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 ORANGE='\033[0;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 MODS_DIR=""
@@ -696,7 +697,11 @@ function mod_install() {
 	local mod_dir=()
 	local mod_files=()
 	local mod_zip=()
+	local nexus_mod_version=""
+	local nexus_mod_file_id=""
+	local nexus_mod_id=""
 	local is_rar=false
+	local is_nexus_mod=false
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
@@ -704,6 +709,18 @@ function mod_install() {
 		"-n")
 			[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 			mod_name="$2"; shift 2
+			;;
+		"--version")
+			[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; exit 1; }
+			nexus_mod_version="$2"; shift 2
+			;;
+		"--file-id")
+			[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; exit 1; }
+			nexus_mod_file_id="$2"; shift 2
+			;;
+		"--mod-id")
+			[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; exit 1; }
+			nexus_mod_id="$2"; shift 2
 			;;
 		*)
 			if [[ "$1" == *.zip || "$1" == *.rar ]]; then
@@ -718,6 +735,9 @@ function mod_install() {
 			;;
 		esac
 	done
+
+	# flag for nexus mods
+	[[ -n "$nexus_mod_version" && -n "$nexus_mod_file_id" && -n "$nexus_mod_id" ]] && is_nexus_mod=true
 
 	# edge case when there is a combination of mod zips and directories, call function for all zips and dirs
 	if [[ ${mod_zip} && ${mod_dir} ]]; then
@@ -851,7 +871,6 @@ function mod_install() {
 		base_name=$(get_basename "$file")
 		extension=$(get_extension "$file")
 
-
 		# count already installed patches
 		count=$(ls "$MODS_DIR/${base_name}.patch_"* 2>/dev/null | grep -E '([0-9]+$)' 2>/dev/null | wc -l)
 
@@ -873,7 +892,13 @@ function mod_install() {
 
 	# add entry to database
 	next_id=$(awk -F, 'NR > 1 {last_id = $1} END {print last_id + 1}' "$DB_FILE")
-	echo "$next_id,ENABLED,$mod_name,${target_files[*]}" >> "$DB_FILE"
+	if [[ $is_nexus_mod == true ]]; then
+		entry="$next_id,ENABLED,$mod_name,$nexus_mod_id,$nexus_mod_file_id,$nexus_mod_version,${target_files[*]}"
+	else
+		entry="$next_id,ENABLED,$mod_name,,,,${target_files[*]}"
+	fi
+
+	echo "$entry" >> "$DB_FILE"
 	log INFO "Mod ${GREEN}successfully${NC} installed: $mod_name."
 
 	# disable any modpack
@@ -956,15 +981,38 @@ function mod_list() {
 
     log INFO "Installed mods:"
 
-    awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -F, 'NR > 1 {
-        color = ($2 == "DISABLED") ? RED : GREEN;
-		if (verbose == "false") {
-			$4 = "";
+    awk -v GREEN="$GREEN" -v ORANGE="$ORANGE" -v BLUE="$BLUE" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -F, 'NR > 1 {
+		mod_index = $1
+		mod_status = $2
+		mod_name = $3
+		mod_id = $4
+		mod_file_id = $5
+		mod_version = $6
+		mod_files = $7
+		mod_details = ""
+
+        STATUS_COLOR = (mod_status == "DISABLED") ? RED : GREEN;
+		if (mod_id == "") {
+			mod_type = "LOCAL";
+			MOD_TYPE_COLOR = BLUE;
+			mod_version = "";
 		} else {
-			gsub(/ /,"\n   -> ", $4);
-			$4 = "\n   -> " $4;
+			mod_type = "NEXUS";
+			MOD_TYPE_COLOR = ORANGE;
+			mod_version = "| ver: " mod_version;
 		}
-        printf "%2s. [%s%s%s] %s %s\n", $1, color, $2, NC, $3, $4
+
+		if (verbose == "false") {
+			mod_files = "";
+			mod_details = "";
+		} else {
+			gsub(/ /,"\n   -> ", mod_files);
+			mod_files = "\n   -> " mod_files;
+
+			mod_details = "\n   => Nexus mod ID: " mod_id " / Nexus file ID: " mod_file_id;
+		}
+
+        printf "%2s. [%s%s%s/%s%s%s] %s %s%s%s\n", mod_index, STATUS_COLOR, mod_status, NC, MOD_TYPE_COLOR, mod_type, NC, mod_name, mod_version, mod_details, mod_files;
     }' "$DB_FILE"
 }
 
@@ -1146,7 +1194,7 @@ function mod_order {
 	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
 	for base_name in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, '{print $4}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
+		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, '{print $7}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
 	done
 
 	# step 2.2 - reverse sort the files_to_replace if we are in descending order
@@ -1521,7 +1569,7 @@ function nexus_setup() {
 	log INFO "You can find your API key in your Nexus Mods by:"
 	log INFO " -> Going to Site Preferences -> API Keys"
 	log INFO " -> Going to https://next.nexusmods.com/settings/api-keys"
-	log INFO "Scroll down, and click the Copy button next to your API key"
+	log INFO "Scroll down and request/copy your API key."
 	log INFO ""
 	log PROMPT "Enter your Nexus Mods API key: "
 	read -e nexus_api_key
@@ -1540,23 +1588,19 @@ function nexus_setup() {
 
 	log INFO "Now the manager needs to create a desktop entry for h2mm."
 	log INFO "In order to do that, it needs to know which terminal you are using."
-	log INFO "You need to provide the command which spawns your preffered terminal."
 	log INFO "Here's a list of supported terminals:"
 	log INFO " -> gnome-terminal (On GNOME systems like Ubuntu)"
 	log INFO " -> konsole (On KDE systems like SteamOS, Steam Deck's default)"
 	log INFO " -> alacritty"
 	log INFO " -> kitty"
 	log INFO ""
+	log INFO "To test if the command is valid, the manager spawn a terminal."
 	log INFO "If you are not using any of these terminals, you need to provide"
-	log INFO "the command to spawn your terminal along with the flags to run"
-	log INFO "a command inside of it. For example, if you are using xfce4-terminal:"
+	log INFO "the command to spawn your terminal along with the flags to run a command."
+	log INFO "For example, if you are using xfce4-terminal you need to provide this:"
 	log INFO "xfce4-terminal -e <COMMAND>"
 	log INFO ""
-	log INFO "To test if the command is valid, the manager spawn a terminal and"
-	log INFO "display \"Press any key to continue...\" inside of it."
-	log INFO "If the terminal quits successfully, the command is valid."
-	log INFO ""
-	log PROMPT "Enter your terminal command: "
+	log PROMPT "Enter your terminal (or terminal command): "
 	read -e terminal_command
 
 	[[ -z "$terminal_command" ]] && { log ERROR "Terminal command is required."; exit 1; }
@@ -1573,7 +1617,7 @@ function nexus_setup() {
 	esac
 
 	# test terminal -e command
-	wait_command="read -p 'Press any key to continue...'"
+	wait_command="read -p 'Press any key to validate terminal...'"
 	test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
 	$test_command
 	[[ $? -ne 0 ]] && { log ERROR "Terminal command is invalid."; exit 1; }
@@ -1608,6 +1652,28 @@ MimeType=x-scheme-handler/nxm;"
 	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
 }
 
+function nexus_get_mod_info() {
+	local mod_id="$1"
+	local mod_file_id="$2"
+
+	[[ -z "$mod_id" || -z "$mod_file_id" ]] && { log ERROR "Mod ID and file ID are required."; exit 1; }
+
+	# api_key
+	get_nexus_api_key
+
+	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$mod_id/files/$mod_file_id.json"
+	response=$(curl -sS -H "apikey: $api_key" "$api_url")
+
+	# checks
+	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
+	[[ ! "$response" =~ "name" || ! "$response" =~ "version" ]] && { log ERROR "Invalid response from Nexus Mods API. Check response for info."; exit 1; }
+
+	# extract info
+	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+')
+	mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
+	[[ -z "$mod_name" || -z "$mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
+}
+
 function nexus() {
 	local mod_nxm_link="$1"
 
@@ -1637,10 +1703,7 @@ function nexus() {
 
 	# checks
 	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
-	[[ -z "$response" ]] && { log ERROR "Empty response from Nexus Mods API."; exit 1; }
-	[[ "$response" =~ "Please provide a valid API Key" || "$response" =~ "Invalid API Key" ]] && { log ERROR "Invalid Nexus Mods API key."; exit 1; }
-	[[ "$response" =~ "Please provide an authentication method" ]] && { log ERROR "Nexus Mods API key is missing."; exit 1; }
-	[[ ! "$response" =~ "URI" || ! "$response" =~ "https://files.nexus-cdn.com" ]] && { log ERROR "Invalid response from Nexus Mods API."; exit 1; }
+	[[ ! "$response" =~ "URI" || ! "$response" =~ "https://files.nexus-cdn.com" ]] && { log ERROR "Invalid response from Nexus Mods API. Check response for info."; exit 1; }
 
 	# extract URI
 	download_url=$(printf "$response" | sed -E 's/.*"URI":"([^"]+)".*/\1/' | sed 's/\ /%20/g')
@@ -1655,7 +1718,10 @@ function nexus() {
 	log INFO "Download ${GREEN}successfully${NC} completed: $output_file"
 	log INFO ""
 
-	mod_install "$output_file"
+	# get mod info
+	nexus_get_mod_info "$mod_id" "$mod_file_id"
+
+	mod_install "$output_file" -n "$mod_name" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version"
 
 	read -p "Press any key to continue..."
 }
