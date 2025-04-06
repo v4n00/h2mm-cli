@@ -20,13 +20,14 @@ H2PATH_FILE="${H2CONFIG_DIR}/h2path"
 API_KEY_FILE="${H2CONFIG_DIR}/api_key"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
-DOWNLOADS_DIR="${HOME}/Downloads"
+
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
     ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
 	["4"]='tmp_file=$(mktemp) && awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" > "$tmp_file" && tee "$1/mods.csv" < "$tmp_file" > /dev/null && rm "$tmp_file"'
+	["5"]='sed -i "s/^\([0-9]\+\),\(.*\),\(.*\),\(.*\)/\1,\2,\3,,,,\4/" "$1/mods.csv"'
 )
 
 # --- Utility Functions ---
@@ -701,7 +702,6 @@ function mod_install() {
 	local nexus_mod_file_id=""
 	local nexus_mod_id=""
 	local is_rar=false
-	local is_nexus_mod=false
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
@@ -735,9 +735,6 @@ function mod_install() {
 			;;
 		esac
 	done
-
-	# flag for nexus mods
-	[[ -n "$nexus_mod_version" && -n "$nexus_mod_file_id" && -n "$nexus_mod_id" ]] && is_nexus_mod=true
 
 	# edge case when there is a combination of mod zips and directories, call function for all zips and dirs
 	if [[ ${mod_zip} && ${mod_dir} ]]; then
@@ -776,7 +773,7 @@ function mod_install() {
 
 		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
 		if [[ -z "$mod_name" ]]; then
-			mod_name=$(basename "$mod_zip" | sed -E 's/\.zip//' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
+			mod_name=$(get_filename_without_path "$mod_zip" | sed -E 's/\.zip//' | sed -E 's/\.rar//' | sed -E 's/-[0-9]+-[^a-zA-Z]*-[0-9]+$//')
 		fi
 
 		# mod_dir as a temporary directory
@@ -892,11 +889,7 @@ function mod_install() {
 
 	# add entry to database
 	next_id=$(awk -F, 'NR > 1 {last_id = $1} END {print last_id + 1}' "$DB_FILE")
-	if [[ $is_nexus_mod == true ]]; then
-		entry="$next_id,ENABLED,$mod_name,$nexus_mod_id,$nexus_mod_file_id,$nexus_mod_version,${target_files[*]}"
-	else
-		entry="$next_id,ENABLED,$mod_name,,,,${target_files[*]}"
-	fi
+	entry="$next_id,ENABLED,$mod_name,$nexus_mod_id,$nexus_mod_file_id,$nexus_mod_version,${target_files[*]}"
 
 	echo "$entry" >> "$DB_FILE"
 	log INFO "Mod ${GREEN}successfully${NC} installed: $mod_name."
@@ -1674,6 +1667,23 @@ function nexus_get_mod_info() {
 	[[ -z "$mod_name" || -z "$mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
 }
 
+function nexus_check_for_updates() {
+	# get list of entries that have a mod_id
+	# call the API for each mod_id and get the latest version
+	# compare the latest version with the installed version
+	# store in a temp file (inside config dir) the mod_id and latest_version of the mods that have updates
+	# IMPORTANT: when installing, if detecting a similar mod_id, delete it from the updates list
+	# add a count of the number of mods that have updates
+	# display the count
+	echo
+}
+
+function upgrade_mods() {
+	# for all mods in the updates list
+	# display a link to the mod page and to the direct download
+	echo
+}
+
 function nexus() {
 	local mod_nxm_link="$1"
 
@@ -1699,7 +1709,7 @@ function nexus() {
 
 	# extract file name
 	file_name=$(echo "$response" | awk -F/ '{print $6}' | cut -d\? -f1)
-	output_file="$DOWNLOADS_DIR/$file_name"
+	output_file="$(mktemp -d)/$file_name"
 
 	# checks
 	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
