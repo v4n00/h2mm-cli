@@ -86,7 +86,7 @@ function get_nexus_mod_id_by_entry_from_db() {
 	echo "$1" | awk -F, '{print $4}'
 }
 
-function get_nexus_file_id_by_entry_from_db() {
+function get_nexus_mod_file_id_by_entry_from_db() {
 	echo "$1" | awk -F, '{print $5}'
 }
 
@@ -115,6 +115,10 @@ function log() {
 		INFO)
 			[[ "$silent" == "true" ]] && return
 			echo -e "$*" >&2
+			;;
+		WARNING)
+			[[ "$silent" == "true" ]] && return
+			echo -e "${ORANGE}[!]${NC} $*" >&2
 			;;
 		ERROR)
 			echo -e "${RED}[ERROR]${NC} $*" >&2
@@ -1306,6 +1310,13 @@ function mod_order {
 	log INFO "Mod ${GREEN}successfully${NC} reindexed: \"$mod_name\" went from $mod_index to $new_index."
 }
 
+function mod_replace() {
+	# get the mod entry from the database based on index or name
+	# uninstall the mod
+	# install the new mod
+	# reindex the mod
+}
+
 # --- Modpack management ---
 
 function modpack_list() {
@@ -1694,13 +1705,14 @@ function nexus_get_mod_info() {
 
 function nexus_check_for_updates() {
 	# get list of entries that have a nexus mod_id
-	nexus_mods=$(awk -F, 'NR > 1 && $4 != "" {print $0}' "$DB_FILE")
+	IFS=$'\n' nexus_mods=($(awk -F, 'NR > 1 && $4 != "" {print $0}' "$DB_FILE")); unset IFS
 	[[ -z "$nexus_mods" ]] && { return 0; }
 
 	local update_count=0
+	[[ -f "$UPDATES_AVAILABLE_FILE" ]] && rm -f "$UPDATES_AVAILABLE_FILE"
 
 	# call the API for each mod_id and get the latest version
-	for entry in $nexus_mods; do
+	for entry in "${nexus_mods[@]}"; do
 		mod_id=$(get_nexus_mod_id_by_entry_from_db "$entry")
 		mod_file_id=$(get_nexus_mod_file_id_by_entry_from_db "$entry")
 		local_mod_version=$(get_nexus_mod_version_by_entry_from_db "$entry")
@@ -1718,22 +1730,21 @@ function nexus_check_for_updates() {
 	done
 
 	[[ $update_count -eq 0 ]] && return 0;
-	log INFO "Updates available for $update_count Nexus mods. Run 'h2mm nexus-upgrade' to being the upgrade process."
+	log WARNING "Updates available for ${ORANGE}$update_count${NC} Nexus mods => run 'h2mm nexus-upgrade'."
 }
 
-function upgrade_mods() {
-	parse_help_no_arguments display_help_nexus_upgrade "$@"
+function nexus_upgrade_mods() {
+	# parse_help_no_arguments display_help_nexus_upgrade "$@"
 
 	[[ $(wc -l < "$UPDATES_AVAILABLE_FILE") -eq 0 ]] && { log INFO "No updates available."; return 0; }
 
 	log INFO "Due to Nexus Mods API limitations, the upgrade process is not automated."
-	log INFO "Please visit the following links to download the latest version of your mods:"
-	log INFO ""
+	log INFO "Please visit the following links to install the latest version of your mods:"
 
 	awk -v GREEN="$GREEN" -v ORANGE="$ORANGE" -v NC="$NC" -F, '{
 		printf "%2s. %s\n", NR, $1
 		printf "  => Update from %s%s%s -> %s%s%s\n", ORANGE, $2, NC, GREEN, $3, NC
-		printf "  -> Direct download: https://www.nexusmods.com/helldivers2/mods/%s?tab=files&file_id=%s&nmm=1\n", $4, $5
+		printf "  -> Direct install: https://www.nexusmods.com/helldivers2/mods/%s?tab=files&file_id=%s&nmm=1\n", $4, $5
 		printf "  -> Mod page: https://www.nexusmods.com/helldivers2/mods/%s\n", $4
 	}' "$UPDATES_AVAILABLE_FILE"
 }
@@ -1811,8 +1822,7 @@ function check_h2mm_update() {
 	fi
 
 	if [[ "$latest_version" != "$VERSION" ]]; then
-		log INFO "A new version of h2mm is available: $VERSION -> $latest_version"
-		log INFO "Run \"h2mm update\" to update."
+		log WARNING "A new version of h2mm is available: ${ORANGE}$VERSION${NC} -> ${GREEN}$latest_version${NC} => run 'h2mm update'."
 	fi
 }
 
@@ -1886,7 +1896,7 @@ function main() {
 			nexus_setup "$@"
 			;;
 		"nexus-upgrade"|"nu")
-			nexus_upgrade "$@"
+			nexus_upgrade_mods "$@"
 			;;
 		"nexus")
 			nexus "$@"
