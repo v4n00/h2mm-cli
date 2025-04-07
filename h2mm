@@ -38,10 +38,12 @@ function hang_for_input() {
 }
 
 function try() {
+	local hang=false
+	[[ "$1" == "--hang" ]] && { shift; hang=true; }
     "$@"
     local code=$?
     if [[ $code -ne 0 ]]; then
-        hang_for_input
+        [[ $hang == true ]] && { hang_for_input; }
         exit $code
     fi
 }
@@ -98,6 +100,10 @@ function disable_all_modpacks() {
 	sed -i 's/ENABLED/DISABLED/' "$MODPACKS_DB_FILE"
 }
 
+function get_entry_from_db_by_nexus_mod_id() {
+	echo "$(awk -F, -v id="$1" 'NR > 1 && $4 == id {print $0}' "$DB_FILE")"
+}
+
 function parse_help_no_arguments() {
 	display_help="$1"
 	[[ "$2" == "--help" || "$2" == "-h" ]] && { $display_help; exit 0; }
@@ -133,6 +139,16 @@ function log() {
 }
 
 # --- Functions ---
+
+function check_nexus_mod_arguments() {
+	if [[ -n "$nexus_mod_id" || -n "$nexus_mod_file_id" || -n "$nexus_mod_version" ]]; then
+		if [[ -z "$nexus_mod_id" || -z "$nexus_mod_file_id" || -z "$nexus_mod_version" ]]; then
+			log ERROR "Nexus mod ID, file ID and version are required when specifing at least one of them."
+			return 1
+		fi
+		has_nexus_mod_arguments=true
+	fi
+}
 
 function get_nexus_api_key() {
 	[[ ! -f "$API_KEY_FILE" ]] && { log ERROR "Nexus API key file not found. Please run h2mm nexus-setup."; return 1; }
@@ -764,6 +780,8 @@ function mod_install() {
 		esac
 	done
 
+	check_nexus_mod_arguments
+
 	# edge case when there is a combination of mod zips and directories, call function for all zips and dirs
 	if [[ ${mod_zip} && ${mod_dir} ]]; then
 		mod_install "${mod_zip[@]}"
@@ -884,8 +902,10 @@ function mod_install() {
 	done
 
 	# verify duplicate mod names
-	get_mod_name_and_index --do-not-exit
-	[[ $mod_index -ne -1 ]] && { log ERROR "The mod '$mod_name' is already installed."; return 1; }
+	if [[ $has_nexus_mod_arguments == false ]]; then
+		get_mod_name_and_index --do-not-exit
+		[[ $mod_index -ne -1 ]] && { log ERROR "The mod '$mod_name' is already installed."; return 1; }
+	fi
 
 	# store the target files so we can put them in the database later
 	target_files=()
@@ -1311,10 +1331,72 @@ function mod_order {
 }
 
 function mod_replace() {
-	# get the mod entry from the database based on index or name
-	# uninstall the mod
-	# install the new mod
-	# reindex the mod
+	parse_help_has_arguments display_help_replace "$@"
+	local mod_name=""
+	local mod_index=""
+	local nexus_mod_id=""
+	local nexus_mod_file_id=""
+	local nexus_mod_version=""
+	local files=()
+
+	# parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
+				mod_index="$2"; shift 2
+				;;
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+				mod_name="$2"; shift 2
+				;;
+			"--version")
+				[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; return 1; }
+				nexus_mod_version="$2"; shift 2
+				;;
+			"--file-id")
+				[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; return 1; }
+				nexus_mod_file_id="$2"; shift 2
+				;;
+			"--mod-id")
+				[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; return 1; }
+				nexus_mod_id="$2"; shift 2
+				;;
+			*)
+				files+=("$1"); shift 1
+				;;
+		esac
+	done
+
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to replace."; return 1; }
+	[[ ${#files[@]} -eq 0 ]] && { log ERROR "No files specified to replace."; return 1; }
+
+	check_nexus_mod_arguments
+
+	# get the mod index from the database based on index, name or nexus mod_id
+	if [[ -n "$nexus_mod_id" ]]; then
+		get_entry_from_db_by_nexus_mod_id
+		mod_index=$(try get_index_by_entry_from_db "$entry")
+	else
+		get_mod_name_and_index
+	fi
+
+	# uninstall the mod (retain index)
+	mod_uninstall -i "$mod_index"
+
+	# install mod
+	if [[ -n "$nexus_mod_id" ]]; then
+		mod_install "${files[@]}" -n "$mod_name" --mod-id "$nexus_mod_id" --file-id "$nexus_mod_file_id" --version "$nexus_mod_version"
+	else
+		mod_install "${files[@]}" -n "$mod_name"
+	fi
+
+	# get index of the installed mod
+	installed_mod_index=$(awk -F, 'NR == NF {print $1}' "$DB_FILE")
+	[[ $? -ne 0 ]] && { log ERROR "Failed to get index of the installed mod."; return 1; }
+
+	# order the mod to the original index
+	mod_order -i "$installed_mod_index" "$mod_index"
 }
 
 # --- Modpack management ---
@@ -1750,7 +1832,7 @@ function nexus_upgrade_mods() {
 }
 
 function nexus() {
-	try _nexus "$@"
+	try --hang _nexus "$@"
 }
 
 function _nexus() {
@@ -1802,9 +1884,10 @@ function _nexus() {
 	nexus_get_mod_info "$mod_id" "$mod_file_id"
 
 	# check if the mod is already installed, if yes, upgrade it, otherwise install it
-	existing_mod=$(awk -F, -v mod_id="$mod_id" 'NR > 1 && $4 == mod_id {print $0}' "$DB_FILE")
+	existing_mod=$(get_entry_from_db_by_nexus_mod_id "$mod_id")
 	if [[ -n "$existing_mod" ]]; then
-		log INFO "upgrading mod" # unimplemented
+		existing_mod_index=$(get_index_by_entry_from_db "$existing_mod")
+		mod_replace -i "$existing_mod_index" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version" "$output_file"
 	else
 		mod_install "$output_file" -n "$mod_name" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version"
 	fi
