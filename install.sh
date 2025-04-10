@@ -8,7 +8,7 @@ NC='\033[0m'
 
 DESTINATION_PATH="/usr/local/bin"
 SCRIPT_NAME="h2mm"
-REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
+REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/nexus-mods-integration"
 
 function log() {
 	local type="$1"

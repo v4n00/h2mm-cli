@@ -22,7 +22,7 @@ UPDATES_AVAILABLE_FILE="${H2CONFIG_DIR}/updates_available"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
 
-VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
+VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/nexus-mods-integration/version"
 
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
@@ -32,21 +32,6 @@ breaking_changes_patches=(
 )
 
 # --- Utility Functions ---
-
-function hang_for_input() {
-	read -p "Press any key to continue..."
-}
-
-function try() {
-	local hang=false
-	[[ "$1" == "--hang" ]] && { shift; hang=true; }
-    "$@"
-    local code=$?
-    if [[ $code -ne 0 ]]; then
-        [[ $hang == true ]] && { hang_for_input; }
-        exit $code
-    fi
-}
 
 function substitute_home() {
 	echo "${1/#\~/$HOME}"
@@ -144,16 +129,16 @@ function check_nexus_mod_arguments() {
 	if [[ -n "$nexus_mod_id" || -n "$nexus_mod_file_id" || -n "$nexus_mod_version" ]]; then
 		if [[ -z "$nexus_mod_id" || -z "$nexus_mod_file_id" || -z "$nexus_mod_version" ]]; then
 			log ERROR "Nexus mod ID, file ID and version are required when specifing at least one of them."
-			return 1
+			exit 1
 		fi
 		has_nexus_mod_arguments=true
 	fi
 }
 
 function get_nexus_api_key() {
-	[[ ! -f "$API_KEY_FILE" ]] && { log ERROR "Nexus API key file not found. Please run h2mm nexus-setup."; return 1; }
+	[[ ! -f "$API_KEY_FILE" ]] && { log ERROR "Nexus API key file not found. Please run h2mm nexus-setup."; exit 1; }
 	api_key=$(cat "$API_KEY_FILE")
-	[[ -z "$api_key" ]] && { log ERROR "Nexus API key is empty. Please run h2mm nexus-setup."; return 1; }
+	[[ -z "$api_key" ]] && { log ERROR "Nexus API key is empty. Please run h2mm nexus-setup."; exit 1; }
 }
 
 function remove_disabled_prefix() {
@@ -177,7 +162,7 @@ function get_mod_name_and_index() {
 	fi
 
 	if [[ -z "$entry" || -z "$mod_index" || -z "$mod_name" ]]; then
-		[[ "$1" != "--do-not-exit" ]] && { log ERROR "Mod not found."; return 1; }
+		[[ "$1" != "--do-not-exit" ]] && { log ERROR "Mod not found."; exit 1; }
 		mod_index=-1
 	fi
 
@@ -193,7 +178,7 @@ function get_modpack_name_and_index() {
 		modpack_index=$(echo "$entry" | awk -F, '{print $1}' | head -1)
 	fi
 
-	[[ -z "$entry" || -z "$modpack_index" || -z "$modpack_name" ]] && { log ERROR "Modpack not found."; return 1; }
+	[[ -z "$entry" || -z "$modpack_index" || -z "$modpack_name" ]] && { log ERROR "Modpack not found."; exit 1; }
 }
 
 function find_game_directory() {
@@ -214,13 +199,13 @@ function find_game_directory() {
 		IFS= read -e game_dir
 		game_dir="$(substitute_home "$game_dir")"
 
-		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; return 1; }
+		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
 	fi
 
 	# save path
 	echo "$game_dir" > "$H2PATH_FILE"
 
-	[[ $? -ne 0 ]] && { log ERROR "Could not save game directory."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not save game directory."; exit 1; }
 	log INFO "Game directory ${GREEN}saved${NC}: $game_dir"
 
 	# return the directory
@@ -229,24 +214,24 @@ function find_game_directory() {
 
 function initialize_config_directory() {
 	mkdir -p "$H2CONFIG_DIR"
-	[[ $? -ne 0 ]] && { log ERROR "Could not create config directory ($H2CONFIG_DIR)."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not create config directory ($H2CONFIG_DIR)."; exit 1; }
 
 	mkdir -p "$BACKUPS_DIR"
-	[[ $? -ne 0 ]] && { log ERROR "Could not create backups directory ($BACKUPS_DIR)."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not create backups directory ($BACKUPS_DIR)."; exit 1; }
 
 	if [[ ! -f "$H2PATH_FILE" ]]; then
 		touch "$H2PATH_FILE"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create path file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not create path file."; exit 1; }
 	fi
 
 	if [[ ! -f "$LAST_CHECKED_UPDATE_FILE" ]]; then
 		touch "$LAST_CHECKED_UPDATE_FILE"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create last checked update file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not create last checked update file."; exit 1; }
 	fi
 
 	if [[ ! -f "$UPDATES_AVAILABLE_FILE" ]]; then
 		touch "$UPDATES_AVAILABLE_FILE"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create updates available file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not create updates available file."; exit 1; }
 	fi
 }
 
@@ -258,7 +243,7 @@ function initialize_directories() {
 	if [[ ! -f "$DB_FILE" ]]; then
 		touch "$DB_FILE"
 
-		[[ $? -ne 0 ]] && { log ERROR "Could not create database file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not create database file."; exit 1; }
 
 		echo "$VERSION" | awk -F. '{print $2}' > "$DB_FILE"
 		log INFO "Database file ${GREEN}created${NC}: $DB_FILE"
@@ -271,10 +256,10 @@ function initialize_modpack_directories() {
 
 	if [[ ! -d "$MODPACKS_DIR" || ! -f "$MODPACKS_DB_FILE" ]]; then
 		mkdir -p "$MODPACKS_DIR"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks directory."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks directory."; exit 1; }
 
 		touch "$MODPACKS_DB_FILE"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks database file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks database file."; exit 1; }
 
 		echo "$VERSION" | awk -F. '{print $2}' > "$MODPACKS_DB_FILE"
 		log INFO "Modpacks directory and file ${GREEN}created${NC}: $MODPACKS_DB_FILE"
@@ -538,7 +523,7 @@ function downgrade_mods() {
 				new_patch="${base_name}.patch_${new_version}${extension}"
 				mv "$MODS_DIR/$mod" "$MODS_DIR/$new_patch"
 
-				[[ $? -ne 0 ]] && { log ERROR "Could not downgrade mod file $mod."; return 1; }
+				[[ $? -ne 0 ]] && { log ERROR "Could not downgrade mod file $mod."; exit 1; }
 				log INFO "Downgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
 
 				# save changes in database as well
@@ -581,7 +566,7 @@ function upgrade_mods() {
 				new_patch="${base_name}.patch_${new_version}${extension}"
 				mv "$MODS_DIR/$mod" "$MODS_DIR/$new_patch"
 
-				[[ $? -ne 0 ]] && { log ERROR "Could not upgrade mod file $mod."; return 1; }
+				[[ $? -ne 0 ]] && { log ERROR "Could not upgrade mod file $mod."; exit 1; }
 				log INFO "Upgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
 
 				sed -i "s/\(\b$mod\b\)/$new_patch/" "$DB_FILE"
@@ -601,11 +586,11 @@ function mod_disable() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 				mod_name="$2"; shift 2
 				;;
 			*)
@@ -616,7 +601,7 @@ function mod_disable() {
 
 	if [[ -z "$mod_name" && -z "$mod_index" ]]; then
 		log ERROR "Mod name or index is required to disable."
-		return 1
+		exit 1
 	fi
 
 	# find mod files
@@ -624,13 +609,13 @@ function mod_disable() {
 
 	if [[ "$status" == "DISABLED" ]]; then
 		log ERROR "Mod $mod_name is already disabled."
-		return 1
+		exit 1
 	fi
 
 	# disable each mod file by adding disabled_ to the start of the filename
 	current_mod_files=$(get_files_by_entry_from_db "$entry")
 	for file in $current_mod_files; do
-		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; return 1; }
+		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 
 		disabled_file="disabled_$file"
 		while [[ -f "$MODS_DIR/$disabled_file" ]]; do
@@ -639,7 +624,7 @@ function mod_disable() {
 
 		mv "$MODS_DIR/$file" "$MODS_DIR/$disabled_file"
 
-		[[ $? -ne 0 ]] && { log ERROR "Could not disable mod file $file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not disable mod file $file."; exit 1; }
 		log INFO "Disabled ${ORANGE}$file${NC} (changed to ${GREEN}\$MODS_DIR/$disabled_file${NC})."
 
 		# save change to db
@@ -652,7 +637,7 @@ function mod_disable() {
 	# update the database
 	sed -i "/^$mod_index,/s/ENABLED/DISABLED/" "$DB_FILE"
 
-	[[ $? -ne 0 ]] && { log ERROR "Could not disable mod."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not disable mod."; exit 1; }
 	log INFO "Mod ${GREEN}successfully${NC} disabled: $mod_name."
 
 	disable_all_modpacks
@@ -667,11 +652,11 @@ function mod_enable() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 				mod_name="$2"; shift 2
 				;;
 			*)
@@ -680,12 +665,12 @@ function mod_enable() {
 		esac
 	done
 
-	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to enable."; return 1; }
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to enable."; exit 1; }
 
 	# find mod files
 	get_mod_name_and_index
 
-	[[ "$status" == "ENABLED" ]] && { log ERROR "Mod $mod_name is already enabled."; return 1; }
+	[[ "$status" == "ENABLED" ]] && { log ERROR "Mod $mod_name is already enabled."; exit 1; }
 
 	current_mod_files=$(get_files_by_entry_from_db "$entry")
 
@@ -697,12 +682,12 @@ function mod_enable() {
 		enabled_file=$(remove_disabled_prefix "$file")
 
 		# check if the files exists
-		[[ -f "$MODS_DIR/$file" ]] || { log ERROR "Mod file $file does not exist."; return 1; }
+		[[ -f "$MODS_DIR/$file" ]] || { log ERROR "Mod file $file does not exist."; exit 1; }
 
 		mv "$MODS_DIR/$file" "$MODS_DIR/$enabled_file"
 
 		# check if the file was moved successfully
-		[[ $? -ne 0 ]] && { log ERROR "Could not enable mod file $file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not enable mod file $file."; exit 1; }
 		log INFO "Enabled ${ORANGE}$file${NC} (changed to ${GREEN}\$MODS_DIR/$enabled_file${NC})."
 
 		# save change to db
@@ -712,7 +697,7 @@ function mod_enable() {
 	# update the database
 	sed -i "/^$mod_index,/s/DISABLED/ENABLED/" "$DB_FILE"
 
-	[[ $? -ne 0 ]] && { log ERROR "Could not enable mod."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not enable mod."; exit 1; }
 	log INFO "Mod ${GREEN}successfully${NC} enabled: $mod_name."
 
 	disable_all_modpacks
@@ -751,19 +736,19 @@ function mod_install() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 		"-n")
-			[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+			[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 			mod_name="$2"; shift 2
 			;;
 		"--version")
-			[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; return 1; }
+			[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; exit 1; }
 			nexus_mod_version="$2"; shift 2
 			;;
 		"--file-id")
-			[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; return 1; }
+			[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; exit 1; }
 			nexus_mod_file_id="$2"; shift 2
 			;;
 		"--mod-id")
-			[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; return 1; }
+			[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; exit 1; }
 			nexus_mod_id="$2"; shift 2
 			;;
 		*)
@@ -804,9 +789,9 @@ function mod_install() {
 	# if zip, extract the zip file and pass it to mod dirs
 	if [[ -n "$mod_zip" ]]; then
 		if [[ $is_rar == true ]]; then
-			command -v unar &> /dev/null || { log ERROR "Rar archive could not be extracted because package \"unarchiver\" is not installed."; return 1; }
+			command -v unar &> /dev/null || { log ERROR "Rar archive could not be extracted because package \"unarchiver\" is not installed."; exit 1; }
 		else
-			command -v unzip &> /dev/null || { log ERROR "Zip archive could not be extracted because package \"unzip\" is not installed."; return 1; }
+			command -v unzip &> /dev/null || { log ERROR "Zip archive could not be extracted because package \"unzip\" is not installed."; exit 1; }
 		fi
 
 		if [[ ! -f "$mod_zip" ]]; then
@@ -814,7 +799,7 @@ function mod_install() {
 			log INFO "Are you sure the file exists? Check with 'ls -l'."
 			log INFO "If yes, check if it's written correctly, you must escape special characters like spaces and quotes."
 			log INFO "Simplest way to do this is to type a few letters and then press Tab to auto-complete the name."
-			return 1
+			exit 1
 		fi
 
 		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
@@ -840,7 +825,7 @@ function mod_install() {
 	# directory containing mod files
 	if [[ -n "$mod_dir" ]]; then
 		# verify directory exists
-		[[ ! -d "$mod_dir" ]] && { log ERROR "Directory $mod_dir does not exist."; return 1; }
+		[[ ! -d "$mod_dir" ]] && { log ERROR "Directory $mod_dir does not exist."; exit 1; }
 
 		# read every file from the directory
 		readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
@@ -877,8 +862,8 @@ function mod_install() {
 
 				# get the files from the chosen variant
 				for index in "${variant_indices[@]}"; do
-					[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid variant index."; return 1; }
-					[[ $index -lt 1 || $index -gt ${#filtered_dirs[@]} ]] && { log ERROR "Variant index out of range."; return 1; }
+					[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid variant index."; exit 1; }
+					[[ $index -lt 1 || $index -gt ${#filtered_dirs[@]} ]] && { log ERROR "Variant index out of range."; exit 1; }
 
 					readarray -d '' variant_files < <(find "${filtered_dirs[$((index - 1))]}" -type f -name "*.patch_*" -print0)
 
@@ -893,18 +878,18 @@ function mod_install() {
 	fi
 
 	# verify minimum information required
-	[[ ${#mod_files[@]} -eq 0 ]] && { log ERROR "No mod files found."; return 1; }
-	[[ -z "$mod_name" ]] && { log ERROR "Mod name is required."; return 1; }
+	[[ ${#mod_files[@]} -eq 0 ]] && { log ERROR "No mod files found."; exit 1; }
+	[[ -z "$mod_name" ]] && { log ERROR "Mod name is required."; exit 1; }
 
 	# verify mod files exist
 	for file in "${mod_files[@]}"; do
-		[[ ! -f "$file" ]] && { log ERROR "Mod file $file does not exist."; return 1; }
+		[[ ! -f "$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 	done
 
 	# verify duplicate mod names
 	if [[ $has_nexus_mod_arguments == false ]]; then
 		get_mod_name_and_index --do-not-exit
-		[[ $mod_index -ne -1 ]] && { log ERROR "The mod '$mod_name' is already installed."; return 1; }
+		[[ $mod_index -ne -1 ]] && { log ERROR "The mod '$mod_name' is already installed."; exit 1; }
 	fi
 
 	# store the target files so we can put them in the database later
@@ -931,7 +916,7 @@ function mod_install() {
 		cp "$file" "$MODS_DIR/$target_file"
 
 		# verify installation worked
-		[[ $? -ne 0 ]] && { log ERROR "Could not install mod file $file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not install mod file $file."; exit 1; }
 		log INFO "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
 	done
 
@@ -955,11 +940,11 @@ function mod_uninstall() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 				mod_name="$2"; shift 2
 				;;
 			*)
@@ -968,7 +953,7 @@ function mod_uninstall() {
 		esac
 	done
 
-	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to uninstall."; return 1; }
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to uninstall."; exit 1; }
 
 	# find mod files
 	get_mod_name_and_index
@@ -977,12 +962,12 @@ function mod_uninstall() {
 	current_mod_files=$(get_files_by_entry_from_db "$entry")
 
 	for file in $current_mod_files; do
-		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; return 1; }
+		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 
 		log INFO "Removing ${ORANGE}\$MODS_DIR/$file${NC}."
 		rm "$MODS_DIR/$file"
 
-		[[ $? -ne 0 ]] && { log ERROR "Could not remove mod file $file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not remove mod file $file."; exit 1; }
 	done
 
 	# downgrade mods with greater version number, only if the mod is enabled
@@ -1065,7 +1050,7 @@ function mod_export() {
 		archive_name="$3"
 	fi
 
-	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; return 1; }
+	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
 
 	if [[ $modpack_export == false ]]; then
 		log PROMPT "Archive file will be saved to directory ${save_dir}. Make? (Y/n/path): "
@@ -1074,7 +1059,7 @@ function mod_export() {
 
 	[[ ! "$confirm" =~ ^[YyNn]$ && -n "$confirm" && $modpack_export == false ]] && { save_dir=$(substitute_home "$confirm"); confirm=""; }
 
-	[[ -d "$save_dir" ]] || { log ERROR "Directory $save_dir does not exist."; return 1; }
+	[[ -d "$save_dir" ]] || { log ERROR "Directory $save_dir does not exist."; exit 1; }
 
 	if [[ $modpack_export == true || "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		# create a temporary directory to store the mods
@@ -1089,20 +1074,20 @@ function mod_export() {
 			cp "$MODPACKS_DIR"/* "$MODS_EXPORT_DIR/modpacks"
 		fi
 
-		[[ $? -ne 0 ]] && { log ERROR "Could not copy mods to target directory."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not copy mods to target directory."; exit 1; }
 
 		# copy all mod files to the export directory
 		for file in $(ls "$MODS_DIR/" 2>/dev/null | grep -E 'patch_.*'); do
 			cp "$MODS_DIR/$file" "$MODS_EXPORT_DIR"
 		done
 
-		[[ $? -ne 0 ]] && { log ERROR "Could not export mods. Possibly because no mods are present."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not export mods. Possibly because no mods are present."; exit 1; }
 
 		# zip up the mods with the current date and time in the name
-		[[ -f "$save_dir/${archive_name}.tar.gz" ]] && { log ERROR "File $save_dir/${archive_name}.tar.gz already exists."; return 1; }
+		[[ -f "$save_dir/${archive_name}.tar.gz" ]] && { log ERROR "File $save_dir/${archive_name}.tar.gz already exists."; exit 1; }
 		tar -czf "$save_dir/${archive_name}.tar.gz" -C "$OUT_DIR" "Helldivers 2 Mods"
 
-		[[ $? -ne 0 ]] && { log ERROR "Failed to export mods."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Failed to export mods."; exit 1; }
 		[[ "$modpack_export" == false ]] && log INFO "Mods ${GREEN}successfully${NC} exported."
 	fi
 }
@@ -1112,7 +1097,7 @@ function mod_import() {
 	local modpack=false; [[ "$1" == "--modpack" ]] && { modpack=true; shift 1; }
 
 	# check if the file exists
-	[[ ! -f "$1" ]] && { log ERROR "File $1 does not exist."; return 1; }
+	[[ ! -f "$1" ]] && { log ERROR "File $1 does not exist."; exit 1; }
 
 	# reset mods before importing
 	[[ $modpack == false ]] && log INFO "Importing mods will ${RED}reset${NC} your mods."
@@ -1121,17 +1106,17 @@ function mod_import() {
 	# extract in temp directory
 	OUT_DIR=$(mktemp -d)
 	tar -xzf "$1" -C "$OUT_DIR"
-	[[ $? -ne 0 ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; exit 1; }
 
 	# get the mods directory
 	MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
-	[[ ! -d "$MODS_EXPORT_DIR" ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; return 1; }
+	[[ ! -d "$MODS_EXPORT_DIR" ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; exit 1; }
 
 	# fix breaking changes if the version number (from the first line) is different
 	db_version=$(head -n 1 "$MODS_EXPORT_DIR/mods.csv")
 	current_version=$(echo "$VERSION" | awk -F. '{print $2}')
 
-	[[ -z "$db_version" || ! "$db_version" =~ ^[0-9]+$ ]] && { log ERROR "Invalid version number inside mods.csv from imported archive."; return 1; }
+	[[ -z "$db_version" || ! "$db_version" =~ ^[0-9]+$ ]] && { log ERROR "Invalid version number inside mods.csv from imported archive."; exit 1; }
 
 	if [[ "$db_version" != "$current_version" ]]; then
 		log INFO "Import detected version 0.$db_version.x, current version is 0.$current_version.x."
@@ -1150,7 +1135,7 @@ function mod_import() {
 				log ERROR "Failed to apply breaking changes patch for version $i. Do you want to continue? (Y/n): "
 				read response
 
-				[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting." ; return 1; }
+				[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting." ; exit 1; }
 			else
 				log INFO "Version upgrade fix ${GREEN}successfully${NC} applied for version $i."
 			fi
@@ -1160,7 +1145,7 @@ function mod_import() {
 	# copy everything in
 	cp -r "$MODS_EXPORT_DIR"/* "$MODS_DIR"
 
-	[[ $? -ne 0 ]] && { log ERROR "Failed to import mods."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Failed to import mods."; exit 1; }
 
 	log INFO "Mods ${GREEN}successfully${NC} imported."
 }
@@ -1175,11 +1160,11 @@ function mod_order {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 				mod_name="$2"; shift 2
 				;;
 			*)
@@ -1188,7 +1173,7 @@ function mod_order {
 		esac
 	done
 
-	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to change order."; return 1; }
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to change order."; exit 1; }
 
 	# find mod files
 	get_mod_name_and_index
@@ -1197,9 +1182,9 @@ function mod_order {
 	mod_count=$(($(cat "$DB_FILE" | wc -l) - 1))
 
 	# check if the mod is already at the desired index and if new index is valid
-	[[ "$mod_index" == "$new_index" ]] && { log ERROR "Mod $mod_name is already at index $new_index."; return 1; }
-	[[ $new_index -lt 1 ]] && { log ERROR "Index can not be less than 1."; return 1; }
-	[[ $new_index -gt $mod_count ]] && { log ERROR "Index can not be more than mod count (${mod_count})."; return 1; }
+	[[ "$mod_index" == "$new_index" ]] && { log ERROR "Mod $mod_name is already at index $new_index."; exit 1; }
+	[[ $new_index -lt 1 ]] && { log ERROR "Index can not be less than 1."; exit 1; }
+	[[ $new_index -gt $mod_count ]] && { log ERROR "Index can not be more than mod count (${mod_count})."; exit 1; }
 
 	# assert ascending or descending order
 	ascending_order=true
@@ -1241,7 +1226,7 @@ function mod_order {
 	# move current mod files to "t_$file" so we can move the new files to the correct index
 	for file in $current_mod_files; do
 		mv "$MODS_DIR/$file" "$MODS_DIR/t_$file"
-		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
 	done
 
 	# step 3 - for every basename in files_to_replace, add replace_count to each file's patch number and move
@@ -1258,7 +1243,7 @@ function mod_order {
 			new_file="${base_name}.patch_$(($patch_number $operation ${replace_count["$base_name"]}))${extension}"
 
 			mv "$MODS_DIR/$file" "$MODS_DIR/$new_file"
-			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; return 1; }
+			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
 
 			log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
 
@@ -1288,7 +1273,7 @@ function mod_order {
 
 			# dont forget current mod files are prefixed with t_
 			mv "$MODS_DIR/t_$file" "$MODS_DIR/t_$new_file"
-			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; return 1; }
+			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
 
 			# update file names
 			entry=$(echo "$entry" | sed "s/\(\b$file\b\)/$new_file/")
@@ -1343,23 +1328,23 @@ function mod_replace() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
 				mod_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
 				mod_name="$2"; shift 2
 				;;
 			"--version")
-				[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; exit 1; }
 				nexus_mod_version="$2"; shift 2
 				;;
 			"--file-id")
-				[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; exit 1; }
 				nexus_mod_file_id="$2"; shift 2
 				;;
 			"--mod-id")
-				[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; exit 1; }
 				nexus_mod_id="$2"; shift 2
 				;;
 			*)
@@ -1368,15 +1353,15 @@ function mod_replace() {
 		esac
 	done
 
-	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to replace."; return 1; }
-	[[ ${#files[@]} -eq 0 ]] && { log ERROR "No files specified to replace."; return 1; }
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to replace."; exit 1; }
+	[[ ${#files[@]} -eq 0 ]] && { log ERROR "No files specified to replace."; exit 1; }
 
 	check_nexus_mod_arguments
 
 	# get the mod index from the database based on index, name or nexus mod_id
 	if [[ -n "$nexus_mod_id" ]]; then
 		get_entry_from_db_by_nexus_mod_id
-		mod_index=$(try get_index_by_entry_from_db "$entry")
+		mod_index=$(get_index_by_entry_from_db "$entry")
 	else
 		get_mod_name_and_index
 	fi
@@ -1393,7 +1378,7 @@ function mod_replace() {
 
 	# get index of the installed mod
 	installed_mod_index=$(awk -F, 'NR == NF {print $1}' "$DB_FILE")
-	[[ $? -ne 0 ]] && { log ERROR "Failed to get index of the installed mod."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Failed to get index of the installed mod."; exit 1; }
 
 	# order the mod to the original index
 	mod_order -i "$installed_mod_index" "$mod_index"
@@ -1449,7 +1434,7 @@ function modpack_create() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
 				modpack_name="$2"; shift 2
 				;;
 			*)
@@ -1459,10 +1444,10 @@ function modpack_create() {
 	done
 
 	# if no mods are installed, exit
-	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; return 1; }
+	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
 
 	# if the same modpack name already exists, exit
-	[[ -f "$MODPACKS_DIR/$1.tar.gz" ]] && { log ERROR "Modpack $1 already exists."; return 1; }
+	[[ -f "$MODPACKS_DIR/$1.tar.gz" ]] && { log ERROR "Modpack $1 already exists."; exit 1; }
 
 	# let user select mods to save
 	mod_list
@@ -1474,8 +1459,8 @@ function modpack_create() {
 
 		# grab all the entries from the database from the indices
 		for index in "${mod_indices[@]}"; do
-			[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; return 1; }
-			[[ $index -lt 1 || $index -gt $(awk -F, 'END {print $1}' "$DB_FILE" ) ]] && { log ERROR "Mod index out of range."; return 1; }
+			[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
+			[[ $index -lt 1 || $index -gt $(awk -F, 'END {print $1}' "$DB_FILE" ) ]] && { log ERROR "Mod index out of range."; exit 1; }
 
 			IFS= mod_entries+=($(awk -v idx=$index -F, 'NR > 1 && $1 == idx {print $0}' "$DB_FILE")); unset IFS
 		done
@@ -1526,11 +1511,11 @@ function modpack_switch() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; exit 1; }
 				modpack_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
 				modpack_name="$2"; shift 2
 				;;
 			*)
@@ -1539,7 +1524,7 @@ function modpack_switch() {
 		esac
 	done
 
-	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to switch."; return 1; }
+	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to switch."; exit 1; }
 
 	# find modpack files
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
@@ -1566,11 +1551,11 @@ function modpack_reset() {
 		rm -f "$MODPACKS_DB_FILE"
 		rmdir "$MODPACKS_DIR"
 
-		[[ $? -ne 0 ]] && { log ERROR "Could not reset modpacks."; return 1; }
+		[[ $? -ne 0 ]] && { log ERROR "Could not reset modpacks."; exit 1; }
 		log INFO "Modpacks ${GREEN}successfully${NC} reset."
 	else
 		log INFO "Reset cancelled."
-		return 1
+		exit 1
 	fi
 }
 
@@ -1583,11 +1568,11 @@ function modpack_delete() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; exit 1; }
 				modpack_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
 				modpack_name="$2"; shift 2
 				;;
 			*)
@@ -1596,13 +1581,13 @@ function modpack_delete() {
 		esac
 	done
 
-	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to delete."; return 1; }
+	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to delete."; exit 1; }
 
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
 	rm -f "$MODPACKS_DIR/$modpack_name.tar.gz"
 
-	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; exit 1; }
 	log INFO "Modpack ${GREEN}successfully${NC} deleted: \$MODPACKS_DIRECTORY/$modpack_name.tar.gz"
 
 	# remove entry from database
@@ -1618,11 +1603,11 @@ function modpack_overwrite() {
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
 			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; return 1; }
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid modpack index."; exit 1; }
 				modpack_index="$2"; shift 2
 				;;
 			"-n")
-				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; return 1; }
+				[[ -z "$2" ]] && { log ERROR "Modpack name is required."; exit 1; }
 				modpack_name="$2"; shift 2
 				;;
 			*)
@@ -1631,15 +1616,15 @@ function modpack_overwrite() {
 		esac
 	done
 
-	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to overwrite."; return 1; }
+	[[ -z "$modpack_name" && -z "$modpack_index" ]] && { log ERROR "Modpack name or index is required to overwrite."; exit 1; }
 
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
 	# if the modpack doesn't exist, exit
-	[[ ! -f "$MODPACKS_DIR/$modpack_name.tar.gz" ]] && { log ERROR "Modpack $modpack_name does not exist."; return 1; }
+	[[ ! -f "$MODPACKS_DIR/$modpack_name.tar.gz" ]] && { log ERROR "Modpack $modpack_name does not exist."; exit 1; }
 
 	rm -f "$MODPACKS_DIR/$modpack_name.tar.gz"
-	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not delete modpack."; exit 1; }
 
 	# use built-in export function
 	mod_export --modpack "$MODPACKS_DIR" "$modpack_name"
@@ -1679,16 +1664,16 @@ function nexus_setup() {
 	log PROMPT "Enter your Nexus Mods API key: "
 	read -e nexus_api_key
 
-	[[ -z "$nexus_api_key" ]] && { log ERROR "Nexus Mods API key is required."; return 1; }
+	[[ -z "$nexus_api_key" ]] && { log ERROR "Nexus Mods API key is required."; exit 1; }
 
 	# save api key to config dir, trim it
 	echo "$nexus_api_key" | tr -d '[:space:]' > "$API_KEY_FILE"
-	[[ $? -ne 0 ]] && { log ERROR "Could not save Nexus Mods API key."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not save Nexus Mods API key."; exit 1; }
 
 	# test API key
 	response=$(curl -sSIH "apikey: $nexus_api_key" -X GET "https://api.nexusmods.com/v1/users/validate.json")
-	[[ $? -ne 0 ]] && { log ERROR "curl failed."; return 1; }
-	[[ ! "$response" =~ "HTTP/2 200" ]] && { log ERROR "Invalid Nexus Mods API key."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
+	[[ ! "$response" =~ "HTTP/2 200" ]] && { log ERROR "Invalid Nexus Mods API key."; exit 1; }
 
 	log INFO "Nexus Mods API key ${GREEN}successfully${NC} tested and saved."
 	log INFO ""
@@ -1713,8 +1698,8 @@ function nexus_setup() {
 	log PROMPT "Enter your terminal (or terminal command): "
 	read -e terminal_command
 
-	[[ -z "$terminal_command" ]] && { log ERROR "Terminal command is required."; return 1; }
-	command -v "$(echo "$terminal_command" | awk '{print $1}')" >/dev/null 2>&1 || { log ERROR "Terminal command does not work."; return 1; }
+	[[ -z "$terminal_command" ]] && { log ERROR "Terminal command is required."; exit 1; }
+	command -v "$(echo "$terminal_command" | awk '{print $1}')" >/dev/null 2>&1 || { log ERROR "Terminal command does not work."; exit 1; }
 
 	# check the 4 supported terminals
 	case "$terminal_command" in
@@ -1730,7 +1715,7 @@ function nexus_setup() {
 	wait_command="read -p 'Press any key to validate terminal...'"
 	test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
 	$test_command
-	[[ $? -ne 0 ]] && { log ERROR "Terminal command is invalid."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Terminal command is invalid."; exit 1; }
 
 	# build terminal command
 	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/h2mm nexus/")
@@ -1749,14 +1734,14 @@ MimeType=x-scheme-handler/nxm;"
 
 	# create the desktop entry file
 	echo "$desktop_entry" > "$desktop_file"
-	[[ $? -ne 0 ]] && { log ERROR "Could not create desktop entry."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not create desktop entry."; exit 1; }
 
 	log INFO "Desktop entry ${GREEN}successfully${NC} created."
 	log INFO "Your system needs to refresh the desktop database to use the new entry."
 	log INFO "This requires sudo permissions. Please enter your password."
 
 	sudo update-desktop-database
-	[[ $? -ne 0 ]] && { log ERROR "Could not refresh desktop database."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Could not refresh desktop database."; exit 1; }
 
 	log INFO "You can now use the Nexus Mods integration."
 	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
@@ -1766,23 +1751,23 @@ function nexus_get_mod_info() {
 	local mod_id="$1"
 	local mod_file_id="$2"
 
-	[[ -z "$mod_id" || -z "$mod_file_id" ]] && { log ERROR "Mod ID and file ID are required."; return 1; }
+	[[ -z "$mod_id" || -z "$mod_file_id" ]] && { log ERROR "Mod ID and file ID are required."; exit 1; }
 
 	# api_key
 	get_nexus_api_key
 
 	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$mod_id/files/$mod_file_id.json"
 	response=$(curl -sSw " http:%{http_code}" -H "apikey: $api_key" "$api_url")
-	[[ $? -ne 0 ]] && { log ERROR "curl failed."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
 
 	# checks
 	status="${response: -3}"
-	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API."; return 1; }
+	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API."; exit 1; }
 
 	# extract info
 	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+')
 	mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
-	[[ -z "$mod_name" || -z "$mod_version" ]] && { log ERROR "Could not extract mod name and version."; return 1; }
+	[[ -z "$mod_name" || -z "$mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
 }
 
 function nexus_check_for_updates() {
@@ -1831,15 +1816,13 @@ function nexus_upgrade_mods() {
 	}' "$UPDATES_AVAILABLE_FILE"
 }
 
-function nexus() {
-	try --hang _nexus "$@"
-}
 
-function _nexus() {
+function nexus() {
+	trap 'read -p "Press any key to continue..."' EXIT
 	local mod_nxm_link="$1"
 
-	[[ -z "$mod_nxm_link" ]] && { log ERROR "Nexus Mods nxm link is required."; return 1; }
-	[[ ! "$mod_nxm_link" =~ ^nxm://helldivers2/mods/[0-9]+/files/[0-9]+\?key=.*\&expires=[0-9]+\&user_id=[0-9]+$ ]] && { log ERROR "Invalid Nexus Mods nxm link."; return 1; }
+	[[ -z "$mod_nxm_link" ]] && { log ERROR "Nexus Mods nxm link is required."; exit 1; }
+	[[ ! "$mod_nxm_link" =~ ^nxm://helldivers2/mods/[0-9]+/files/[0-9]+\?key=.*\&expires=[0-9]+\&user_id=[0-9]+$ ]] && { log ERROR "Invalid Nexus Mods nxm link."; exit 1; }
 
 	log INFO "Received NXM link: $mod_nxm_link"
 
@@ -1856,11 +1839,11 @@ function _nexus() {
 	log INFO "Using API URL: $api_url"
 
 	response=$(curl -sSw " http:%{http_code}" -H "apikey: $api_key" "$api_url")
-	[[ $? -ne 0 ]] && { log ERROR "curl failed."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
 
 	# checks
 	status="${response: -3}"
-	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API."; return 1; }
+	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API."; exit 1; }
 	log INFO "Received response from Nexus Mods API: $response"
 
 	# extract URI
@@ -1875,7 +1858,7 @@ function _nexus() {
 	# download the file
 	log INFO "Download progress:"
 	curl -Lo "$output_file" "$download_url"
-	[[ $? -ne 0 ]] && { log ERROR "Download failed."; return 1; }
+	[[ $? -ne 0 ]] && { log ERROR "Download failed."; exit 1; }
 
 	log INFO "Download ${GREEN}successfully${NC} completed."
 	log INFO ""
@@ -1886,13 +1869,12 @@ function _nexus() {
 	# check if the mod is already installed, if yes, upgrade it, otherwise install it
 	existing_mod=$(get_entry_from_db_by_nexus_mod_id "$mod_id")
 	if [[ -n "$existing_mod" ]]; then
-		existing_mod_index=$(get_index_by_entry_from_db "$existing_mod")
-		mod_replace -i "$existing_mod_index" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version" "$output_file"
+		# existing_mod_index=$(get_index_by_entry_from_db "$existing_mod")
+		# mod_replace -i "$existing_mod_index" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version" "$output_file"
+		log INFO "not yet implemented :D"
 	else
 		mod_install "$output_file" -n "$mod_name" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version"
 	fi
-
-	hang_for_input
 }
 
 # --- Update Check ---
