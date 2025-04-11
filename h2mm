@@ -22,7 +22,7 @@ UPDATES_AVAILABLE_FILE="${H2CONFIG_DIR}/updates_available"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
 
-VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/nexus-mods-integration/version"
+VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'
@@ -278,9 +278,9 @@ Commands:
 	l, list						List all installed mods.
 	e, enable					Enable a mod.
 	d, disable					Disable a mod.
+	o, order					Change load order of a mod.
 	ex, export					Export installed mods to a zip file.
 	im, import					Import mods from a zip file.
-	o, order					Change load order of a mod.
 	mc, modpack-create				Create a modpack from the currently installed mods.
 	ms, modpack-switch				Switch to a modpack.
 	ml, modpack-list				List all installed modpacks.
@@ -288,7 +288,7 @@ Commands:
 	mo, modpack-overwrite				Overwrite a modpack.
 	mr, modpack-reset				Reset all installed modpacks.
 	ns, nexus-setup				Setup Nexus Mods integration.
-	nu, nexus-upgrade				Update Nexus mods.
+	nu, nexus-update				Start Nexus mods update process.
 	up, update					Update h2mm to the latest version.
 	r, reset					Reset all installed mods.
 	help						Display this help message.
@@ -469,9 +469,9 @@ Run this again in case you change the API key or want to change the desktop entr
 EOF
 }
 
-function display_help_nexus_upgrade() {
+function display_help_nexus_update() {
 	cat << EOF
-Usage: h2mm nexus-upgrade
+Usage: h2mm nexus-update
 Display a list of Nexus mods that have updates available.
 Due to Nexus API limitations, this will prompt the user to access the Nexus website to download the updates.
 EOF
@@ -917,7 +917,7 @@ function mod_install() {
 
 		# verify installation worked
 		[[ $? -ne 0 ]] && { log ERROR "Could not install mod file $file."; exit 1; }
-		log INFO "Mod file ${ORANGE}$file${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
+		log INFO "Mod file ${ORANGE}$(echo "$file" | cut -d'/' -f4-)${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
 	done
 
 	# add entry to database
@@ -1031,7 +1031,7 @@ function mod_list() {
         printf "%2s. [%s%s%s/%s%s%s] %s %s\n", mod_index, STATUS_COLOR, mod_status, NC, MOD_TYPE_COLOR, mod_type, NC, mod_name, mod_version;
 		if (verbose == "true") {
 			gsub(/ /,"\n   -> ", mod_files);
-			printf "   => Nexus mod ID: %s / Nexus file ID: %s\n", mod_id, mod_file_id;
+			if (mod_id != "") printf "   => Nexus mod ID: %s / Nexus file ID: %s\n", mod_id, mod_file_id;
 			printf "   -> %s\n", mod_files;
 		}
     }' "$DB_FILE"
@@ -1119,7 +1119,7 @@ function mod_import() {
 	[[ -z "$db_version" || ! "$db_version" =~ ^[0-9]+$ ]] && { log ERROR "Invalid version number inside mods.csv from imported archive."; exit 1; }
 
 	if [[ "$db_version" != "$current_version" ]]; then
-		log INFO "Import detected version 0.$db_version.x, current version is 0.$current_version.x."
+		log INFO "Import version mismatch detected: ${ORANGE}0.$db_version.x${NC} -> ${GREEN}0.$current_version.x${NC}."
 
 		# iterate from installed major number to latest major number
 		for ((i = db_version + 1; i <= current_version; i++)); do
@@ -1127,7 +1127,7 @@ function mod_import() {
 				# apply breaking changes patch
 				eval $(echo "${breaking_changes_patches[$i]}" | sed "s:\$1:$MODS_EXPORT_DIR:g")
 			else
-				log INFO "No breaking changes for version $i."
+				log INFO "No breaking changes for version 0.$i.x."
 				continue
 			fi
 
@@ -1137,7 +1137,7 @@ function mod_import() {
 
 				[[ "$response" != "y" && "$response" != "Y" && -n "$response" ]] && { log INFO "Exiting." ; exit 1; }
 			else
-				log INFO "Version upgrade fix ${GREEN}successfully${NC} applied for version $i."
+				log INFO "Upgrade ${GREEN}successfully${NC} applied for mismatch: ${GREEN}0.$i.x${NC}."
 			fi
 		done
 	fi
@@ -1147,7 +1147,7 @@ function mod_import() {
 
 	[[ $? -ne 0 ]] && { log ERROR "Failed to import mods."; exit 1; }
 
-	log INFO "Mods ${GREEN}successfully${NC} imported."
+	[[ $modpack == false ]] && log INFO "Mods ${GREEN}successfully${NC} imported."
 }
 
 function mod_order {
@@ -1315,75 +1315,6 @@ function mod_order {
 	log INFO "Mod ${GREEN}successfully${NC} reindexed: \"$mod_name\" went from $mod_index to $new_index."
 }
 
-function mod_replace() {
-	parse_help_has_arguments display_help_replace "$@"
-	local mod_name=""
-	local mod_index=""
-	local nexus_mod_id=""
-	local nexus_mod_file_id=""
-	local nexus_mod_version=""
-	local files=()
-
-	# parse arguments
-	while [[ $# -gt 0 ]]; do
-		case "$1" in
-			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
-				mod_index="$2"; shift 2
-				;;
-			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
-				mod_name="$2"; shift 2
-				;;
-			"--version")
-				[[ -z "$2" ]] && { log ERROR "Nexus mod version is required."; exit 1; }
-				nexus_mod_version="$2"; shift 2
-				;;
-			"--file-id")
-				[[ -z "$2" ]] && { log ERROR "Nexus mod file ID is required."; exit 1; }
-				nexus_mod_file_id="$2"; shift 2
-				;;
-			"--mod-id")
-				[[ -z "$2" ]] && { log ERROR "Nexus mod ID is required."; exit 1; }
-				nexus_mod_id="$2"; shift 2
-				;;
-			*)
-				files+=("$1"); shift 1
-				;;
-		esac
-	done
-
-	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to replace."; exit 1; }
-	[[ ${#files[@]} -eq 0 ]] && { log ERROR "No files specified to replace."; exit 1; }
-
-	check_nexus_mod_arguments
-
-	# get the mod index from the database based on index, name or nexus mod_id
-	if [[ -n "$nexus_mod_id" ]]; then
-		get_entry_from_db_by_nexus_mod_id
-		mod_index=$(get_index_by_entry_from_db "$entry")
-	else
-		get_mod_name_and_index
-	fi
-
-	# uninstall the mod (retain index)
-	mod_uninstall -i "$mod_index"
-
-	# install mod
-	if [[ -n "$nexus_mod_id" ]]; then
-		mod_install "${files[@]}" -n "$mod_name" --mod-id "$nexus_mod_id" --file-id "$nexus_mod_file_id" --version "$nexus_mod_version"
-	else
-		mod_install "${files[@]}" -n "$mod_name"
-	fi
-
-	# get index of the installed mod
-	installed_mod_index=$(awk -F, 'NR == NF {print $1}' "$DB_FILE")
-	[[ $? -ne 0 ]] && { log ERROR "Failed to get index of the installed mod."; exit 1; }
-
-	# order the mod to the original index
-	mod_order -i "$installed_mod_index" "$mod_index"
-}
-
 # --- Modpack management ---
 
 function modpack_list() {
@@ -1447,7 +1378,7 @@ function modpack_create() {
 	[[ $(wc -l < "$DB_FILE") -le 1 ]] && { log ERROR "No mods installed."; exit 1; }
 
 	# if the same modpack name already exists, exit
-	[[ -f "$MODPACKS_DIR/$1.tar.gz" ]] && { log ERROR "Modpack $1 already exists."; exit 1; }
+	[[ -f "$MODPACKS_DIR/${modpack_name}.tar.gz" ]] && { log ERROR "Modpack \"$modpack_name\" already exists."; exit 1; }
 
 	# let user select mods to save
 	mod_list
@@ -1530,9 +1461,7 @@ function modpack_switch() {
 	get_modpack_name_and_index "$modpack_name" "$modpack_index"
 
 	log INFO "Switching modpacks mods will ${RED}reset${NC} your mods."
-	silent=true
 	mod_import --modpack "$MODPACKS_DIR/$modpack_name.tar.gz"
-	silent=false
 
 	log INFO "Modpack ${GREEN}successfully${NC} switched: $modpack_name."
 
@@ -1689,11 +1618,11 @@ function nexus_setup() {
 	log INFO " -> alacritty"
 	log INFO " -> kitty"
 	log INFO ""
-	log INFO "To test if the command is valid, the manager spawn a terminal."
 	log INFO "If you are not using any of these terminals, you need to provide"
 	log INFO "the command to spawn your terminal along with the flags to run a command."
-	log INFO "For example, if you are using xfce4-terminal you need to provide this:"
-	log INFO "xfce4-terminal -e <COMMAND>"
+	log INFO "To test if the command is valid, the manager spawn a terminal."
+	log INFO "For example, if you are using ghostty you need to provide this:"
+	log INFO "ghostty -e <COMMAND>"
 	log INFO ""
 	log PROMPT "Enter your terminal (or terminal command): "
 	read -e terminal_command
@@ -1709,13 +1638,21 @@ function nexus_setup() {
 		"konsole"|"alacritty"|"kitty")
 			terminal_command="$terminal_command -e <COMMAND>"
 			;;
-	esac
+		*)
+			# check if terminal even exists
+			command -v "$(echo "$terminal_command" | awk '{print $1}')" >/dev/null 2>&1 || { log ERROR "Terminal command does not work."; exit 1; }
+			# check if the format is valid
+			[[ "$terminal_command" != *"<COMMAND>"* ]] && { log ERROR "Terminal command is invalid. You did not include <COMMAND>"; exit 1; }
 
-	# test terminal -e command
-	wait_command="read -p 'Press any key to validate terminal...'"
-	test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
-	$test_command
-	[[ $? -ne 0 ]] && { log ERROR "Terminal command is invalid."; exit 1; }
+			# test terminal -e command
+			wait_command="read -p 'Press any key to validate terminal...'"
+			test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
+
+			log INFO "Using test command: $test_command"
+			$test_command
+			[[ $? -ne 0 ]] && { log ERROR "Terminal command is invalid."; exit 1; }
+			;;
+	esac
 
 	# build terminal command
 	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/h2mm nexus/")
@@ -1736,6 +1673,7 @@ MimeType=x-scheme-handler/nxm;"
 	echo "$desktop_entry" > "$desktop_file"
 	[[ $? -ne 0 ]] && { log ERROR "Could not create desktop entry."; exit 1; }
 
+	log INFO ""
 	log INFO "Desktop entry ${GREEN}successfully${NC} created."
 	log INFO "Your system needs to refresh the desktop database to use the new entry."
 	log INFO "This requires sudo permissions. Please enter your password."
@@ -1745,6 +1683,7 @@ MimeType=x-scheme-handler/nxm;"
 
 	log INFO "You can now use the Nexus Mods integration."
 	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
+	log INFO "Your browser will ask you to open the link with h2mm."
 }
 
 function nexus_get_mod_info() {
@@ -1766,47 +1705,47 @@ function nexus_get_mod_info() {
 
 	# extract info
 	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+')
-	mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
-	[[ -z "$mod_name" || -z "$mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
+	nexus_mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
+	[[ -z "$mod_name" || -z "$nexus_mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
 }
 
 function nexus_check_for_updates() {
 	# get list of entries that have a nexus mod_id
 	IFS=$'\n' nexus_mods=($(awk -F, 'NR > 1 && $4 != "" {print $0}' "$DB_FILE")); unset IFS
-	[[ -z "$nexus_mods" ]] && { return 0; }
+	[[ -z "$nexus_mods" ]] && return
 
 	local update_count=0
 	[[ -f "$UPDATES_AVAILABLE_FILE" ]] && rm -f "$UPDATES_AVAILABLE_FILE"
 
 	# call the API for each mod_id and get the latest version
 	for entry in "${nexus_mods[@]}"; do
-		mod_id=$(get_nexus_mod_id_by_entry_from_db "$entry")
-		mod_file_id=$(get_nexus_mod_file_id_by_entry_from_db "$entry")
+		nexus_mod_id=$(get_nexus_mod_id_by_entry_from_db "$entry")
+		nexus_mod_file_id=$(get_nexus_mod_file_id_by_entry_from_db "$entry")
 		local_mod_version=$(get_nexus_mod_version_by_entry_from_db "$entry")
 
-		nexus_get_mod_info "$mod_id" "$mod_file_id"
+		nexus_get_mod_info "$nexus_mod_id" "$nexus_mod_file_id"
 
 		# compare the latest version with the installed version
-		if [[ "$mod_version" != "$local_mod_version" ]]; then
+		if [[ "$nexus_mod_version" != "$local_mod_version" ]]; then
 			mod_name=$(get_name_by_entry_from_db "$entry")
 
 			# store in a temp file (inside config dir) the mods that have updates
-			echo "$mod_name,$local_mod_version,$mod_version,$mod_id,$mod_file_id" >> "$UPDATES_AVAILABLE_FILE"
+			echo "$mod_name,$local_mod_version,$nexus_mod_version,$nexus_mod_id,$nexus_mod_file_id" >> "$UPDATES_AVAILABLE_FILE"
 			update_count=$((update_count + 1))
 		fi
 	done
 
 	[[ $update_count -eq 0 ]] && return 0;
-	log WARNING "Updates available for ${ORANGE}$update_count${NC} Nexus mods => run 'h2mm nexus-upgrade'."
+	log WARNING "Updates available for ${ORANGE}$update_count${NC} Nexus mods => run 'h2mm nexus-update'."
 }
 
-function nexus_upgrade_mods() {
-	# parse_help_no_arguments display_help_nexus_upgrade "$@"
+function nexus_update_mods() {
+	parse_help_no_arguments display_help_nexus_update "$@"
 
 	[[ $(wc -l < "$UPDATES_AVAILABLE_FILE") -eq 0 ]] && { log INFO "No updates available."; return 0; }
 
-	log INFO "Due to Nexus Mods API limitations, the upgrade process is not automated."
-	log INFO "Please visit the following links to install the latest version of your mods:"
+	log INFO "Due to Nexus Mods API limitations, the update process is not automated."
+	log INFO "Please visit the direct download links to install the latest version of your mods:"
 
 	awk -v GREEN="$GREEN" -v ORANGE="$ORANGE" -v NC="$NC" -F, '{
 		printf "%2s. %s\n", NR, $1
@@ -1830,12 +1769,12 @@ function nexus() {
 	get_nexus_api_key
 
 	# extract info
-	mod_id=$(echo "$mod_nxm_link" | awk -F/ '{print $5}')
-	mod_file_id=$(echo "$mod_nxm_link" | awk -F/ '{print $7}' | cut -d\? -f1)
+	nexus_mod_id=$(echo "$mod_nxm_link" | awk -F/ '{print $5}')
+	nexus_mod_file_id=$(echo "$mod_nxm_link" | awk -F/ '{print $7}' | cut -d\? -f1)
 	key=$(echo "$mod_nxm_link" | awk -F= '{print $2}' | cut -d\& -f1)
 	expires=$(echo "$mod_nxm_link" | awk -F= '{print $3}' | cut -d\& -f1)
 
-	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$mod_id/files/$mod_file_id/download_link.json?key=$key&expires=$expires"
+	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$nexus_mod_id/files/$nexus_mod_file_id/download_link.json?key=$key&expires=$expires"
 	log INFO "Using API URL: $api_url"
 
 	response=$(curl -sSw " http:%{http_code}" -H "apikey: $api_key" "$api_url")
@@ -1864,16 +1803,31 @@ function nexus() {
 	log INFO ""
 
 	# get mod info
-	nexus_get_mod_info "$mod_id" "$mod_file_id"
+	nexus_get_mod_info "$nexus_mod_id" "$nexus_mod_file_id"
 
-	# check if the mod is already installed, if yes, upgrade it, otherwise install it
-	existing_mod=$(get_entry_from_db_by_nexus_mod_id "$mod_id")
-	if [[ -n "$existing_mod" ]]; then
-		# existing_mod_index=$(get_index_by_entry_from_db "$existing_mod")
-		# mod_replace -i "$existing_mod_index" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version" "$output_file"
-		log INFO "not yet implemented :D"
+	# check if the mod is already installed, if yes, update it, otherwise install it
+	existing_mod_entry=$(get_entry_from_db_by_nexus_mod_id "$nexus_mod_id")
+	if [[ -z "$existing_mod_entry" ]]; then
+		# install the mod if it doesn't exist
+		mod_install "$output_file" -n "$mod_name" --mod-id "$nexus_mod_id" --file-id "$nexus_mod_file_id" --version "$nexus_mod_version"
 	else
-		mod_install "$output_file" -n "$mod_name" --mod-id "$mod_id" --file-id "$mod_file_id" --version "$mod_version"
+		# replace the mod if it exists
+		existing_mod_index=$(get_index_by_entry_from_db "$existing_mod_entry")
+		mod_index=$(get_index_by_entry_from_db "$existing_mod_entry")
+
+		mod_uninstall -i "$mod_index"
+
+		mod_install "$output_file" -n "$mod_name" --mod-id "$nexus_mod_id" --file-id "$nexus_mod_file_id" --version "$nexus_mod_version"
+
+		# get the current mod index from what we just installed, last line of the db
+		new_mod_index=$(get_index_by_entry_from_db "$(awk -F, 'END {print $1}' "$DB_FILE")")
+		[[ -z "$new_mod_index" ]] && { log ERROR "Could not get current mod index."; exit 1; }
+
+		[[ $mod_index -ne $old_mod_index ]] && mod_order -i "$new_mod_index" "$mod_index"
+
+		log INFO "Mod ${GREEN}successfully${NC} updated: $mod_name."
+
+		disable_all_modpacks
 	fi
 }
 
@@ -1896,6 +1850,8 @@ function check_for_updates() {
 	if [[ -n "$last_update" && "$(date +%s)" -lt $(("$(date +%s -d "$last_update")" + 7200)) ]]; then
 		return
 	fi
+
+	log INFO "Checking for updates..."
 
 	check_h2mm_update
 	nexus_check_for_updates
@@ -1960,8 +1916,8 @@ function main() {
 		"nexus-setup"|"ns")
 			nexus_setup "$@"
 			;;
-		"nexus-upgrade"|"nu")
-			nexus_upgrade_mods "$@"
+		"nexus-update"|"nu")
+			nexus_update_mods "$@"
 			;;
 		"nexus")
 			nexus "$@"

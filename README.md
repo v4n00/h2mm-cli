@@ -41,25 +41,27 @@ h2mm
 
 ### Available commands
 
-- `install` - Install a mod by the file provided (directory, zip, patch).
-- `uninstall` - Uninstall a mod.
-- `list` - List all installed mods.
-- `enable` - Enable a mod.
-- `disable` - Disable a mod.
-- `export` - Export installed mods to a zip file.
-- `import` - Import mods from a zip file.
-- `order` - Change load order for a mod.
-- `modpack-create` - Create a modpack from the currently installed mods.
-- `modpack-switch` - Switch to a modpack.
-- `modpack-list` - List all installed modpacks.
-- `modpack-delete` - Delete a modpack.
-- `modpack-overwrite` - Overwrite a modpack.
-- `modpack-reset` - Reset all installed modpacks.
-- `update` - Update h2mm to latest version.
-- `reset` - Reset all installed mods.
-- `help` - Display this help message.
+- `install` or `i` - Install a mod by the file provided (directory, zip, patch);
+- `uninstall` or `u` - Uninstall a mod;
+- `list` or `l` - List all installed mods;
+- `enable` or `e` - Enable a mod;
+- `disable` or `d` - Disable a mod;
+- `order` or `o` - Change load order for a mod;
+- `export` or `ex` - Export installed mods to a zip file;
+- `import` or `im` - Import mods from a zip file;
+- `modpack-create` or `mc` - Create a modpack from the currently installed mods;
+- `modpack-switch` or `ms` - Switch to a modpack;
+- `modpack-list` or `ml` - List all installed modpacks;
+- `modpack-delete` or `md` - Delete a modpack;
+- `modpack-overwrite` or `mo` - Overwrite a modpack;
+- `modpack-reset` or `mr` - Reset all installed modpacks;
+- `nexus-setup` or `ns` - Setup Nexus Mods integration;
+- `nexus-update` or `nu` - Start Nexus mods upgrade process;
+- `update` or `up` - Update h2mm to latest version;
+- `reset` or `r` - Reset all installed mods;
+- `help` or `h` - Display this help message.
 
-### Basic usage
+### Usage
 
 To find out how to use a command, you can run `h2mm <COMMAND> --help`.
 
@@ -67,17 +69,27 @@ To find out how to use a command, you can run `h2mm <COMMAND> --help`.
 
 ```bash
 h2mm install /path/to/mod.zip
-h2mm install /path/to/mod/files
+h2mm install /path/to/mod/directory/
 h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files
 h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files
-h2mm install -n "Example mod" mod* # using a wildcard to include all files
+```
+
+> It's better to be in the directory where the mod files are located, so you don't have to specify the full path. For mod downloads, you can do `cd ~/Downloads` and then run the command.
+>
+> Also, use the Tab key to autocomplete the file names, as it will help you escape special characters likes spaces or quotes.
+
+#### List installed mods
+
+```bash
+h2mm list
+h2mm list -v # verbose mode
 ```
 
 #### Uninstall a mod
 
 ```bash
 h2mm uninstall -n "Example mod"
-h2mm uninstall -i 3
+h2mm uninstall -i 3 # get the index from the list command
 ```
 
 #### Enable/disable mods
@@ -89,17 +101,21 @@ h2mm disable -n "Example mod"
 h2mm disable -i 3
 ```
 
-#### List installed mods
-
-```bash
-h2mm list
-```
-
 #### Updating the script
 
 ```bash
 h2mm update
 ```
+
+## Nexus Mods integration
+
+Nexus Mods integration allows you to use the 1-click install feature of Nexus Mods (with the "Vortex" or "Mod manager download" buttons). You can set up Nexus Mods integration by running the following command:
+
+```bash
+h2mm nexus-setup
+```
+
+You will be walked through the setup process, which will ask you for your Nexus Mods API key and your preferred terminal.
 
 ## Compatibility
 
@@ -111,62 +127,7 @@ Status of platforms:
 - Steam Deck :white_check_mark:
 - Windows - WSL :white_check_mark:
 
-> The script works on WSL, but you need to specify the path to the Helldivers 2 mods directory manually, to find your Windows partition head to `/mnt/` and from there go to your Helldivers 2 data directory, on a typical install it should be on `/mnt/c/Program\ Files\ \(x86\)/Steam/steamapps/common/Helldivers\ 2/data`. You also need to have `unzip` installed, which can be done by running `sudo apt install unzip`.
-
-## Advanced usage
-
-### Shortcuts
-
-You can use the short form of commands to save some time. The shortcuts are:
-
-- `i` for `install`
-- `u` for `uninstall`
-- `e` for `enable`
-- `d` for `disable`
-- `l` for `list`
-- `ex` for `export`
-- `im` for `import`
-- `o` for `order`
-- `mc` for `modpack-create`
-- `ms` for `modpack-switch`
-- `ml` for `modpack-list`
-- `md` for `modpack-delete`
-- `mo` for `modpack-overwrite`
-- `mr` for `modpack-reset`
-- `up` for `update`
-- `r` for `reset`
-
-### Modpacks support
-
-You can set up modpacks by using the `modpack-*` commands. This allows you to quickly change between a set of mods. For more information, check the help message.
-
-```bash
-h2mm modpack-create -n "Modpack 1"
-# install, enable, disable other mods...
-h2mm modpack-create -n "Modpack 2"
-h2mm modpack-switch -n "Modpack 1"
-```
-
-### Exporting and importing
-
-You can export all installed mods to a zip file and import mods from the same file. This can be useful for sharing mods with others or for backing up your mods. The archive file (`.tar.gz`) will be saved in the current directory.
-
-```bash
-h2mm export
-h2mm import /path/to/mods.tar.gz
-```
-
-### Resetting all installed mods
-
-You can reset all installed mods by running the following command. This will remove all installed mods and the database, in case things go wild.
-
-```bash
-h2mm reset
-```
-
-### Database location and details
-
-The database is stored in the `Helldivers 2` install directory, under the `data` folder with the name `mods.csv`, where the mods are also installed. The database is a simple CSV file which you can use to manually manage mods if needed, you can mostly use it to rename or reorder mods.
+> The script works on WSL, but you need to specify the path to the Helldivers 2 mods directory manually, to find your Windows partition head to `/mnt/` and from there go to your Helldivers 2 data directory, on a typical install it should be on `/mnt/c/Program\ Files\ \(x86\)/Steam/steamapps/common/Helldivers\ 2/data`. You also need to have `unzip` installed, which can be done by running `sudo apt install unzip`. Nexus Mods integration is not supported on WSL.
 
 ## Contributing
 
