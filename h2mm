@@ -730,7 +730,7 @@ function mod_install() {
 	local nexus_mod_version=""
 	local nexus_mod_file_id=""
 	local nexus_mod_id=""
-	local is_rar=false
+	local is_not_zip=false
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
@@ -752,9 +752,9 @@ function mod_install() {
 			nexus_mod_id="$2"; shift 2
 			;;
 		*)
-			if [[ "$1" == *.zip || "$1" == *.rar ]]; then
+			if [[ "$1" == *.zip || "$1" == *.rar || "$1" == *.7z ]]; then
 				mod_zip+=("$1")
-				[[ "$1" == *.rar ]] && is_rar=true
+				[[ "$1" != *.zip ]] && is_not_zip=true
 			elif [[ -d "$1" ]]; then
 				mod_dir+=("$1")
 			else
@@ -788,10 +788,10 @@ function mod_install() {
 
 	# if zip, extract the zip file and pass it to mod dirs
 	if [[ -n "$mod_zip" ]]; then
-		if [[ $is_rar == true ]]; then
-			command -v unar &> /dev/null || { log ERROR "Rar archive could not be extracted because package \"unarchiver\" is not installed."; exit 1; }
+		if [[ $is_not_zip == true ]]; then
+			command -v unar &> /dev/null || { log ERROR "Archive in 7z/rar format could not be extracted because package \"unarchiver\" is not installed."; exit 1; }
 		else
-			command -v unzip &> /dev/null || { log ERROR "Zip archive could not be extracted because package \"unzip\" is not installed."; exit 1; }
+			command -v unzip &> /dev/null || { log ERROR "Archive in zip format could not be extracted because package \"unzip\" is not installed."; exit 1; }
 		fi
 
 		if [[ ! -f "$mod_zip" ]]; then
@@ -809,7 +809,7 @@ function mod_install() {
 
 		# mod_dir as a temporary directory
 		mod_dir+=$(mktemp -d)
-		if [[ $is_rar == true ]]; then
+		if [[ $is_not_zip == true ]]; then
 			unar -q "$mod_zip" -o "$mod_dir"
 		else
 			unzip -qq "$mod_zip" -d "$mod_dir"
