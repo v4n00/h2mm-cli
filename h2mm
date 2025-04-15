@@ -1690,23 +1690,23 @@ function nexus_get_mod_info() {
 	local mod_id="$1"
 	local mod_file_id="$2"
 
-	[[ -z "$mod_id" || -z "$mod_file_id" ]] && { log ERROR "Mod ID and file ID are required."; exit 1; }
+	[[ -z "$mod_id" || -z "$mod_file_id" ]] && { log ERROR "Mod ID and file ID are required (inside Nexus info check)."; return 1; }
 
 	# api_key
 	get_nexus_api_key
 
 	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$mod_id/files/$mod_file_id.json"
 	response=$(curl -sSw " http:%{http_code}" -H "apikey: $api_key" "$api_url")
-	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
+	[[ $? -ne 0 ]] && { log ERROR "curl failed (inside Nexus info check)."; return 1; }
 
 	# checks
 	status="${response: -3}"
-	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API."; exit 1; }
+	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API (inside Nexus info check)."; return 1; }
 
 	# extract info
 	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+')
 	nexus_mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
-	[[ -z "$mod_name" || -z "$nexus_mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
+	[[ -z "$mod_name" || -z "$nexus_mod_version" ]] && { log ERROR "Could not extract mod name and version (inside Nexus info check)."; return 1; }
 }
 
 function nexus_check_for_updates() {
@@ -1724,6 +1724,7 @@ function nexus_check_for_updates() {
 		local_mod_version=$(get_nexus_mod_version_by_entry_from_db "$entry")
 
 		nexus_get_mod_info "$nexus_mod_id" "$nexus_mod_file_id"
+		[[ $? -ne 0 ]] && { return 1; }
 
 		# compare the latest version with the installed version
 		if [[ "$nexus_mod_version" != "$local_mod_version" ]]; then
@@ -1804,6 +1805,7 @@ function nexus() {
 
 	# get mod info
 	nexus_get_mod_info "$nexus_mod_id" "$nexus_mod_file_id"
+	[[ $? -ne 0 ]] && { exit 1; }
 
 	# check if the mod is already installed, if yes, update it, otherwise install it
 	existing_mod_entry=$(get_entry_from_db_by_nexus_mod_id "$nexus_mod_id")
@@ -1847,7 +1849,16 @@ function check_h2mm_update() {
 
 function check_for_updates() {
 	last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
-	if [[ -n "$last_update" && "$(date +%s)" -lt $(("$(date +%s -d "$last_update")" + 7200)) ]]; then
+
+	# if last_update is not in unix time format, reset it (for version <= 0.5.0)
+	if [[ ! "$last_update" =~ ^[0-9]+$ ]]; then
+		rm -f "$LAST_CHECKED_UPDATE_FILE"
+		echo "$(date +%s)" > "$LAST_CHECKED_UPDATE_FILE"
+		last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
+	fi
+
+	# check for updates by comparing the last update time + 3 hpurs with the current time
+	if [[ -n "$last_update" && "$(date +%s)" -lt $(("$last_update" + 7200)) ]]; then
 		return
 	fi
 
@@ -1856,7 +1867,7 @@ function check_for_updates() {
 	check_h2mm_update
 	nexus_check_for_updates
 
-	echo "$(date)" > "$LAST_CHECKED_UPDATE_FILE"
+	echo "$(date +%s)" > "$LAST_CHECKED_UPDATE_FILE"
 }
 
 # --- Main ---
