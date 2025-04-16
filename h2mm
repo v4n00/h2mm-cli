@@ -886,6 +886,9 @@ function mod_install() {
 		[[ ! -f "$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 	done
 
+	# sanitize mod name so it doesn't contain commas
+	mod_name=$(echo "$mod_name" | sed 's/,//g')
+
 	# verify duplicate mod names
 	if [[ $has_nexus_mod_arguments == false ]]; then
 		get_mod_name_and_index --do-not-exit
