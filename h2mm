@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.0"
+VERSION="0.5.3"
 
 # --- Globals ---
 
@@ -194,12 +194,26 @@ function find_game_directory() {
 	game_dir=$(timeout 10 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
 
 	if [[ -z "$game_dir" ]]; then
+		# if not found, ask user for the directory
 		log INFO "Could not find the Helldivers 2 data directory automatically."
 		log PROMPT "Please enter the path to the Helldivers 2 data directory: "
-		IFS= read -e game_dir
+		IFS= read -e game_dir; unset IFS
 		game_dir="$(substitute_home "$game_dir")"
 
 		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
+	else
+		# confirm with the user that the directory is ok
+		log INFO "Found Helldivers 2 data directory: $game_dir"
+		log PROMPT "Is this the correct directory? (Y/n): "
+		read confirm
+
+		if [[ "$confirm" != "y" && "$confirm" != "Y" && "$confirm" != "" ]]; then
+			log PROMPT "Please enter the path to the Helldivers 2 data directory: "
+			IFS= read -e game_dir; unset IFS
+			game_dir="$(substitute_home "$game_dir")"
+
+			[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
+		fi
 	fi
 
 	# save path
