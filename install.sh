@@ -130,9 +130,7 @@ if [[ $latest_major -gt $installed_major ]]; then
 	# check if game directory is in ~/.config/h2mm/h2path
 	if [[ -f "$HOME/.config/h2mm/h2path" ]]; then
 		game_dir=$(cat "$HOME/.config/h2mm/h2path")
-		[[ ! -d "$game_dir" ]] && { log ERROR "Helldivers 2 data directory in ~/.config/h2mm/h2path is not a valid directory." ; exit 1; }
-
-		log INFO "Helldivers 2 data directory found: $game_dir."
+		[[ ! -d "$game_dir" ]] && { log ERROR "Helldivers 2 data directory is not valid: $game_dir." ; exit 1; }
 	else
 		log INFO "Searching for the Helldivers 2 data directory... (10 seconds timeout)"
 		game_dir=$(timeout 10 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
@@ -140,12 +138,25 @@ if [[ $latest_major -gt $installed_major ]]; then
 
 	# if not found, prompt user
 	if [[ -z "$game_dir" ]]; then
+		# if not found, ask user for the directory
 		log INFO "Could not find the Helldivers 2 data directory automatically."
 		log PROMPT "Please enter the path to the Helldivers 2 data directory: "
-		IFS= read -e game_dir
-		if [[ ! -d "$game_dir" ]]; then
-			log ERROR "Provided path is not a valid directory."
-			exit 1
+		IFS= read -e game_dir; unset IFS
+		game_dir="$(substitute_home "$game_dir")"
+
+		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
+	else
+		# confirm with the user that the directory is ok
+		log INFO "Found Helldivers 2 data directory: $game_dir"
+		log PROMPT "Is this the correct directory? (Y/n): "
+		read confirm
+
+		if [[ "$confirm" != "y" && "$confirm" != "Y" && "$confirm" != "" ]]; then
+			log PROMPT "Please enter the path to the Helldivers 2 data directory: "
+			IFS= read -e game_dir; unset IFS
+			game_dir="$(substitute_home "$game_dir")"
+
+			[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
 		fi
 	fi
 
