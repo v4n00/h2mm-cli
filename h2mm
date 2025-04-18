@@ -864,7 +864,7 @@ function mod_install() {
 		if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
 			log INFO "Multiple mod variants found for mod ${mod_name}."
 			for i in "${!filtered_dirs[@]}"; do
-				log INFO "$((i + 1)). $(basename "${filtered_dirs[$i]}")"
+				log INFO "$((i + 1)). ${filtered_dirs[$i]#$mod_dir/}"
 			done
 
 			# prompt user to choose
