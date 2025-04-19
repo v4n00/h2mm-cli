@@ -863,8 +863,21 @@ function mod_install() {
 
 		if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
 			log INFO "Multiple mod variants found for mod ${mod_name}."
+
+			# print the variant name by display all the directories (and how they're nested)
+			# first, take the basename of the directory/zip we're installing from
+			# then, make the variant name by removing the tmp dir name from the path (if it's a zip)
+			# finally, take out this name, if it exists
+
+			if [[ -n "$mod_zip" ]]; then
+				mod_file_name="$(get_basename "$mod_zip")"
+			else
+				mod_file_name="*"
+			fi
+
 			for i in "${!filtered_dirs[@]}"; do
-				log INFO "$((i + 1)). ${filtered_dirs[$i]#$mod_dir/}"
+				variant_name="${filtered_dirs[$i]#$mod_dir/}" # remote temp name in case its a zip
+				log INFO "$((i + 1)). ${variant_name#$mod_file_name/}" # remote the name of the zip/dir if it exists
 			done
 
 			# prompt user to choose
