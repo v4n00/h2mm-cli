@@ -1698,7 +1698,10 @@ Type=Application
 Categories=Game;
 MimeType=x-scheme-handler/nxm;"
 
-	local desktop_file="$HOME/.local/share/applications/h2mm.desktop"
+	local desktop_folder="$HOME/.local/share/applications"
+	[[ ! -d "$desktop_folder" ]] && mkdir -p "$desktop_folder"
+
+	local desktop_file="$desktop_folder/h2mm.desktop"
 
 	# create the desktop entry file
 	echo "$desktop_entry" > "$desktop_file"
@@ -1706,10 +1709,8 @@ MimeType=x-scheme-handler/nxm;"
 
 	log INFO ""
 	log INFO "Desktop entry ${GREEN}successfully${NC} created."
-	log INFO "Your system needs to refresh the desktop database to use the new entry."
-	log INFO "This requires sudo permissions. Please enter your password."
 
-	sudo update-desktop-database
+	update-desktop-database "$desktop_folder"
 	[[ $? -ne 0 ]] && { log ERROR "Could not refresh desktop database."; exit 1; }
 
 	log INFO "You can now use the Nexus Mods integration."
