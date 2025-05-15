@@ -1631,8 +1631,7 @@ function nexus_setup() {
 
 	# test API key
 	response=$(curl -sSIH "apikey: $nexus_api_key" -X GET "https://api.nexusmods.com/v1/users/validate.json")
-	# [[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
-	# for some reason curl fails on Steam Deck with (8) weird server reply despite the request being valid, commenting it out
+	[[ $? -eq 8 ]] && log INFO "Above error is common for Steam Deck, everything is fine."
 	[[ ! "$response" =~ "HTTP/2 200" ]] && { log ERROR "Invalid Nexus Mods API key."; exit 1; }
 
 	log INFO "Nexus Mods API key ${GREEN}successfully${NC} tested and saved."
