@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.3test3"
+VERSION="0.5.3test4"
 
 # --- Globals ---
 
@@ -1677,7 +1677,7 @@ function nexus_setup() {
 			[[ "$terminal_command" != *"<COMMAND>"* ]] && { log ERROR "Terminal command is invalid. You did not include <COMMAND>"; exit 1; }
 
 			# test terminal -e command
-			wait_command="read -p 'Press any key to validate terminal...'"
+			wait_command="read -p 'Press Enter to validate terminal...'"
 			test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
 
 			log INFO "Using test command: $test_command"
@@ -1687,7 +1687,7 @@ function nexus_setup() {
 	esac
 
 	# build terminal command
-	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/h2mm nexus/")
+	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$(which h2mm) nexus %u/")
 
 	# build the desktop entry
 	local desktop_entry="[Desktop Entry]
@@ -1796,7 +1796,7 @@ function nexus_update_mods() {
 
 
 function nexus() {
-	trap 'read -p "Press any key to continue..."' EXIT
+	trap 'read -p "Press Enter to continue..."' EXIT
 	local mod_nxm_link="$1"
 
 	[[ -z "$mod_nxm_link" ]] && { log ERROR "Nexus Mods nxm link is required."; exit 1; }
