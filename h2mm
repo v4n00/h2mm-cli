@@ -1687,7 +1687,8 @@ function nexus_setup() {
 	esac
 
 	# build terminal command
-	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$(which h2mm) nexus %u/")
+	h2mm_location="$(which h2mm)"
+	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/${h2mm_location} nexus %u/")
 
 	# build the desktop entry
 	local desktop_entry="[Desktop Entry]
