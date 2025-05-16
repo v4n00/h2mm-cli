@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.3"
+VERSION="0.5.4"
 
 # --- Globals ---
 
@@ -196,9 +196,11 @@ function find_game_directory() {
 	if [[ -z "$game_dir" ]]; then
 		# if not found, ask user for the directory
 		log INFO "Could not find the Helldivers 2 data directory automatically."
-		log PROMPT "Please enter the path to the Helldivers 2 data directory: "
+		log PROMPT "Please enter the ABSOLUTE path to the Helldivers 2 data directory: "
 		IFS= read -e game_dir; unset IFS
-		game_dir="$(substitute_home "$game_dir")"
+
+		game_dir="$(substitute_home "$game_dir")" # replace ~ with $HOME
+		game_dir="${game_dir%/}" # remove last / if it exists
 
 		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
 	else
@@ -1631,7 +1633,7 @@ function nexus_setup() {
 
 	# test API key
 	response=$(curl -sSIH "apikey: $nexus_api_key" -X GET "https://api.nexusmods.com/v1/users/validate.json")
-	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
+	[[ $? -eq 8 ]] && log INFO "Above error is common for Steam Deck, everything is fine."
 	[[ ! "$response" =~ "HTTP/2 200" ]] && { log ERROR "Invalid Nexus Mods API key."; exit 1; }
 
 	log INFO "Nexus Mods API key ${GREEN}successfully${NC} tested and saved."
@@ -1675,7 +1677,7 @@ function nexus_setup() {
 			[[ "$terminal_command" != *"<COMMAND>"* ]] && { log ERROR "Terminal command is invalid. You did not include <COMMAND>"; exit 1; }
 
 			# test terminal -e command
-			wait_command="read -p 'Press any key to validate terminal...'"
+			wait_command="read -p 'Press Enter to validate terminal...'"
 			test_command=$(echo "$terminal_command" | sed "s/<COMMAND>/$wait_command/")
 
 			log INFO "Using test command: $test_command"
@@ -1685,7 +1687,7 @@ function nexus_setup() {
 	esac
 
 	# build terminal command
-	terminal_command=$(echo "$terminal_command" | sed "s/<COMMAND>/h2mm nexus/")
+	terminal_command=$(echo "$terminal_command" | sed "s|<COMMAND>|$(which h2mm) nexus \%u|")
 
 	# build the desktop entry
 	local desktop_entry="[Desktop Entry]
@@ -1697,7 +1699,10 @@ Type=Application
 Categories=Game;
 MimeType=x-scheme-handler/nxm;"
 
-	local desktop_file="$HOME/.local/share/applications/h2mm.desktop"
+	local desktop_folder="$HOME/.local/share/applications"
+	[[ ! -d "$desktop_folder" ]] && mkdir -p "$desktop_folder"
+
+	local desktop_file="$desktop_folder/h2mm.desktop"
 
 	# create the desktop entry file
 	echo "$desktop_entry" > "$desktop_file"
@@ -1705,11 +1710,13 @@ MimeType=x-scheme-handler/nxm;"
 
 	log INFO ""
 	log INFO "Desktop entry ${GREEN}successfully${NC} created."
-	log INFO "Your system needs to refresh the desktop database to use the new entry."
-	log INFO "This requires sudo permissions. Please enter your password."
 
-	sudo update-desktop-database
-	[[ $? -ne 0 ]] && { log ERROR "Could not refresh desktop database."; exit 1; }
+	update-desktop-database "$desktop_folder"
+
+	# test xdg mime command exists
+	if command -v xdg-mime >/dev/null 2>&1; then
+		xdg-mime default "$desktop_file" x-scheme-handler/nxm
+	fi
 
 	log INFO "You can now use the Nexus Mods integration."
 	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
@@ -1788,7 +1795,7 @@ function nexus_update_mods() {
 
 
 function nexus() {
-	trap 'read -p "Press any key to continue..."' EXIT
+	trap 'read -p "Press Enter to continue..."' EXIT
 	local mod_nxm_link="$1"
 
 	[[ -z "$mod_nxm_link" ]] && { log ERROR "Nexus Mods nxm link is required."; exit 1; }
