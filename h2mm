@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.3"
+VERSION="0.5.3test3"
 
 # --- Globals ---
 
@@ -196,9 +196,11 @@ function find_game_directory() {
 	if [[ -z "$game_dir" ]]; then
 		# if not found, ask user for the directory
 		log INFO "Could not find the Helldivers 2 data directory automatically."
-		log PROMPT "Please enter the path to the Helldivers 2 data directory: "
+		log PROMPT "Please enter the ABSOLUTE path to the Helldivers 2 data directory: "
 		IFS= read -e game_dir; unset IFS
-		game_dir="$(substitute_home "$game_dir")"
+
+		game_dir="$(substitute_home "$game_dir")" # replace ~ with $HOME
+		game_dir="${game_dir%/}" # remove last / if it exists
 
 		[[ ! -d "$game_dir" ]] && { log ERROR "Provided path is not a valid directory."; exit 1; }
 	else
@@ -1710,7 +1712,12 @@ MimeType=x-scheme-handler/nxm;"
 	log INFO "Desktop entry ${GREEN}successfully${NC} created."
 
 	update-desktop-database "$desktop_folder"
-	[[ $? -ne 0 ]] && { log ERROR "Could not refresh desktop database."; exit 1; }
+
+	# test xdg mime command exists
+	if command -v xdg-mime >/dev/null 2>&1; then
+		xdg-mime default "$desktop_file" x-scheme-handler/nxm
+		[[ $? -ne 0 ]] && { log ERROR "Could not set default application for nxm links."; exit 1; }
+	fi
 
 	log INFO "You can now use the Nexus Mods integration."
 	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
