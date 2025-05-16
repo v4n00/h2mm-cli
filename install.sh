@@ -92,7 +92,7 @@ if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
 			[[ $? -ne 0 ]] && { log ERROR "Failed to add $DESTINATION_PATH to \$PATH in ~/.bashrc." ; exit 1; }
 
 			source "$HOME/.bashrc"
-			[[ $? -ne 0 ]] && { log ERROR "Failed to source ~/.bashrc." ; exit 1; }
+			export PATH="$HOME/.local/bin:$PATH" # fallback kinda in case sourcing fails
 
             log INFO "Added $DESTINATION_PATH to your \$PATH in ~/.bashrc."
         fi
