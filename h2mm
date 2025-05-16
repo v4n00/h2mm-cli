@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.3test4"
+VERSION="0.5.3"
 
 # --- Globals ---
 
