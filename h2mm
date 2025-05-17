@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.4"
+VERSION="0.5.5"
 
 # --- Globals ---
 
@@ -1744,6 +1744,8 @@ function nexus_get_mod_info() {
 	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+')
 	nexus_mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
 	[[ -z "$mod_name" || -z "$nexus_mod_version" ]] && { log ERROR "Could not extract mod name and version (inside Nexus info check)."; return 1; }
+
+	return 0
 }
 
 function nexus_check_for_updates() {
@@ -1862,7 +1864,7 @@ function nexus() {
 		new_mod_index=$(get_index_by_entry_from_db "$(awk -F, 'END {print $1}' "$DB_FILE")")
 		[[ -z "$new_mod_index" ]] && { log ERROR "Could not get current mod index."; exit 1; }
 
-		[[ $mod_index -ne $old_mod_index ]] && mod_order -i "$new_mod_index" "$mod_index"
+		[[ $mod_index -ne $new_mod_index ]] && mod_order -i "$new_mod_index" "$mod_index"
 
 		log INFO "Mod ${GREEN}successfully${NC} updated: $mod_name."
 
