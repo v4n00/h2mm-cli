@@ -59,6 +59,7 @@ if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
 		log ERROR "Installed version is not in the correct format."
 		log ERROR "h2mm is installed here -> $(which h2mm)"
 		log ERROR "Delete the script file and retry the install script, any mods installed will not be lost."
+		log INFO 'Download using the command: bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"'
 		exit 1
 	fi
 
@@ -92,7 +93,7 @@ if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
 			[[ $? -ne 0 ]] && { log ERROR "Failed to add $DESTINATION_PATH to \$PATH in ~/.bashrc." ; exit 1; }
 
 			source "$HOME/.bashrc"
-			[[ $? -ne 0 ]] && { log ERROR "Failed to source ~/.bashrc." ; exit 1; }
+			export PATH="$HOME/.local/bin:$PATH" # fallback kinda in case sourcing fails
 
             log INFO "Added $DESTINATION_PATH to your \$PATH in ~/.bashrc."
         fi
