@@ -31,12 +31,12 @@ function log() {
 # warning
 
 cat << EOF
-$RED!!! WARNING !!!$RED
+${RED}!!! WARNING !!!${RED}
 This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME.
 Running this script will require sudo permissions. DO NOT TRUST random scripts from the internet.
 If you want to review the script before running it, check out the repository for yourself:
 https://github.com/v4n00/h2mm-cli
-$RED!!! WARNING !!!$RED
+${RED}!!! WARNING !!!${RED}
 
 EOF
 
