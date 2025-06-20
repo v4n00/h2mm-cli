@@ -8,7 +8,7 @@ NC='\033[0m'
 
 DESTINATION_PATH="/usr/local/bin"
 SCRIPT_NAME="h2mm"
-REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
+REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/remove-nexus-upgrade"
 
 function log() {
 	local type="$1"
@@ -46,6 +46,7 @@ breaking_changes_patches=(
     ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
 	["4"]='tmp_file=$(mktemp) && awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" > "$tmp_file" && tee "$1/mods.csv" < "$tmp_file" > /dev/null && rm "$tmp_file"'
 	["5"]='sed -i "s/^\([0-9]\+\),\(.*\),\(.*\),\(.*\)/\1,\2,\3,,,,\4/" "$1/mods.csv"; sed -i "1 s/4/5/" "$1/mods.csv"'
+	["6"]='sed -i "s/^\([0-9]\+\),\(.*\),\(.*\),\(.*\),\(.*\),\(.*\),\(.*\)/\1,\2,\3,\4,\6,\7/" "$1/mods.csv"; sed -i "1 s/5/6/" "$1/mods.csv"'
 )
 
 # notify if update is happening

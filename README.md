@@ -2,7 +2,7 @@
 
 Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no Linux mod manager available and I like being a nerd by using CLI tools instead of GUIs, this project was born.
 
-This script is complete, the version will always [remain at 0.x.x](https://0ver.org/)
+This mod manager is complete, the version will always [remain at 0.x.x](https://0ver.org/). Version 0.6.x will be the last version of this mod manager.
 
 ## Installation
 
@@ -11,8 +11,6 @@ Pre-requisites:
 - You must have the `unzip` package installed for zip archives;
 - You might want to have the `unarchiver` package installed for rar archives.
 
-> The `unzip` package comes pre-installed on most Linux distributions. If you do not know how to install packages, search for your Linux distro and package manager.
-
 To install Helldivers 2 Mod Manager CLI run the following command in your terminal:
 
 ```bash
@@ -20,20 +18,11 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/head
 ```
 
 > [!CAUTION]
-> Running this script will require sudo permissions. **DO NOT TRUST** random scripts from the internet. If you want to review the script before running it, check out the mod repository for yourself.
-
-If for some reason, the installation command doesn't work you can:
-
-1. Go to <https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh>
-1. Right click -> Save page as...
-1. Open your terminal
-1. Go to your downloads folders with `cd ~/Downloads`
-1. Give the script execution permissions `chmod +x install.sh`
-1. Run the script `./install.sh`
+> Running this script will require sudo permissions. **DO NOT TRUST** random scripts from the internet. If you want to review the script before running it, check out the repository for yourself.
 
 ## Usage
 
-The script gets added to `/usr/local/bin/h2mm` and can be used by running `h2mm` in your shell, which will show the help message explaining how to use the script.
+The script gets added to `/usr/local/bin/h2mm` (or `$HOME/.local/bin` on Steam Deck) and can be used by running `h2mm` in your shell, which will show the help message explaining how to use the script.
 
 ```bash
 h2mm
@@ -46,6 +35,7 @@ h2mm
 - `list` or `l` - List all installed mods;
 - `enable` or `e` - Enable a mod;
 - `disable` or `d` - Disable a mod;
+- `rename` or `r` - Rename a mod;
 - `order` or `o` - Change load order for a mod;
 - `export` or `ex` - Export installed mods to a zip file;
 - `import` or `im` - Import mods from a zip file;
@@ -56,21 +46,20 @@ h2mm
 - `modpack-overwrite` or `mo` - Overwrite a modpack;
 - `modpack-reset` or `mr` - Reset all installed modpacks;
 - `nexus-setup` or `ns` - Setup Nexus Mods integration;
-- `nexus-update` or `nu` - Start Nexus mods upgrade process;
 - `update` or `up` - Update h2mm to latest version;
-- `reset` or `r` - Reset all installed mods;
+- `reset` or `rs` - Reset all installed mods;
 - `help` or `h` - Display this help message.
 
-### Usage
+### Examples
 
 To find out how to use a command, you can run `h2mm <COMMAND> --help`.
 
 #### Install mod(s)
 
 ```bash
-h2mm install /path/to/mod.zip
+h2mm install mod.zip
 h2mm install /path/to/mod/directory/
-h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files
+h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # mix and match hoewever you want
 h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files
 ```
 
