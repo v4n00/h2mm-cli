@@ -7,7 +7,6 @@ ORANGE='\033[0;33m'
 NC='\033[0m'
 
 DESTINATION_PATH="/usr/local/bin"
-SCRIPT_NAME="h2mm"
 REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
 
 function log() {
@@ -30,15 +29,15 @@ function log() {
 
 # warning
 
+log INFO "${RED}!!! WARNING !!!${NC}"
 cat << EOF
-!!! WARNING !!!
-This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME.
+This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/h2mm.
 Running this script will require sudo permissions. DO NOT TRUST random scripts from the internet.
-If you want to review the script before running it, check out the mod repository for yourself:
+If you want to review the script before running it, check out the repository for yourself:
 https://github.com/v4n00/h2mm-cli
-!!! WARNING !!!
-
 EOF
+log INFO "${RED}!!! WARNING !!!${NC}"
+log INFO ""
 
 # breaking changes hash table
 breaking_changes_patches=(
@@ -46,13 +45,14 @@ breaking_changes_patches=(
     ["3"]='sed -i "1 i\\3" "$1/mods.csv"'
 	["4"]='tmp_file=$(mktemp) && awk '\''BEGIN {FS=OFS=","} NR==1 {print 4; next} {print NR-1, $2, $3, $4, $5}'\'' "$1/mods.csv" > "$tmp_file" && tee "$1/mods.csv" < "$tmp_file" > /dev/null && rm "$tmp_file"'
 	["5"]='sed -i "s/^\([0-9]\+\),\(.*\),\(.*\),\(.*\)/\1,\2,\3,,,,\4/" "$1/mods.csv"; sed -i "1 s/4/5/" "$1/mods.csv"'
+	["6"]='sed -i "s/^\([0-9]\+\),\(.*\),\(.*\),\(.*\),\(.*\),\(.*\),\(.*\)/\1,\2,\3,\4,\6,\7/" "$1/mods.csv"; sed -i "1 s/5/6/" "$1/mods.csv"'
 )
 
 # notify if update is happening
 installed_version=""
 latest_version=""
-if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
-    installed_version=$($SCRIPT_NAME --version)
+if [[ -x "$(command -v h2mm)" ]]; then
+    installed_version=$(h2mm --version)
 
 	# if installed version isn't x.x.x crash
 	if [[ ! "$installed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -116,16 +116,10 @@ latest_major=$(echo "$latest_version" | awk -F. '{print $2}')
 
 if [[ $latest_major -gt $installed_major ]]; then
 	log INFO ""
-	log INFO "Major version upgrade detected."
-	log INFO "Check out the changelogs here -> https://github.com/v4n00/h2mm-cli/releases"
-	log INFO "The script will proceed to upgrade the database file to avoid breaking changes."
-
-	# find hd2 path
-	search_dir="${HOME}"
-	target_dir="Steam/steamapps/common/Helldivers\ 2/data"
+	log INFO "${GREEN}IMPORTANT${NC}: Major version upgrade detected. Check out the changelogs here -> https://github.com/v4n00/h2mm-cli/releases"
+	log INFO "The script will proceed to upgrade the database file. Creating a backup in case anything goes wrong."
 
 	# make backup
-	log INFO "Creating a backup in case anything goes wrong."
 	h2mm export
 
 	# check if game directory is in ~/.config/h2mm/h2path
@@ -134,7 +128,7 @@ if [[ $latest_major -gt $installed_major ]]; then
 		[[ ! -d "$game_dir" ]] && { log ERROR "Helldivers 2 data directory is not valid: $game_dir." ; exit 1; }
 	else
 		log INFO "Searching for the Helldivers 2 data directory... (10 seconds timeout)"
-		game_dir=$(timeout 10 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+		game_dir=$(timeout 10 find "$HOME" -type d -path "*/Steam/steamapps/common/Helldivers\ 2/data" 2>/dev/null | head -n 1)
 	fi
 
 	# if not found, prompt user
@@ -186,12 +180,12 @@ if [[ $latest_major -gt $installed_major ]]; then
 fi
 
 # install
-log INFO "Installing $SCRIPT_NAME to $DESTINATION_PATH."
-sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
-sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+log INFO "Installing h2mm to $DESTINATION_PATH."
+sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/h2mm"
+sudo chmod +x "$DESTINATION_PATH/h2mm"
 log INFO ""
 
-[[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
+[[ ! -x "$(command -v h2mm)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
 
 log INFO "Helldivers 2 Mod Manager CLI ${GREEN}successfully${NC} installed."
 log INFO "${GREEN}IMPORTANT${NC}: To install mods, you need to have installed:"
@@ -199,5 +193,6 @@ log INFO " -> \"unzip\" package for .zip archives"
 log INFO " -> \"unarchiver\" package for .rar archives"
 log INFO "If you do not know how to install these packages, please search for your linux distro on how to install packages."
 log INFO ""
-log INFO "Use the mod manager by running '$SCRIPT_NAME' in your terminal."
+log INFO "Use the mod manager by running 'h2mm' in your terminal."
+log INFO "Check out the Nexus Mods integration by running 'h2mm nexus-setup'."
 log INFO "Made with love <3 by v4n and contributors."
