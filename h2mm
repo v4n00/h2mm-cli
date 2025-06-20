@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-VERSION="0.5.5"
+
+VERSION="0.5.6"
 
 # --- Globals ---
 
@@ -38,7 +39,7 @@ function substitute_home() {
 }
 
 function get_version_major() {
-	echo "$1" | awk -F. '{print $2}'
+	echo "$VERSION" | awk -F. '{print $2}'
 }
 
 function get_filename_without_path() {
@@ -261,7 +262,7 @@ function initialize_directories() {
 
 		[[ $? -ne 0 ]] && { log ERROR "Could not create database file."; exit 1; }
 
-		echo "$VERSION" | awk -F. '{print $2}' > "$DB_FILE"
+		echo "$(get_version_major)" > "$DB_FILE"
 		log INFO "Database file ${GREEN}created${NC}: $DB_FILE"
 	fi
 }
@@ -277,7 +278,7 @@ function initialize_modpack_directories() {
 		touch "$MODPACKS_DB_FILE"
 		[[ $? -ne 0 ]] && { log ERROR "Could not create modpacks database file."; exit 1; }
 
-		echo "$VERSION" | awk -F. '{print $2}' > "$MODPACKS_DB_FILE"
+		echo "$(get_version_major)" > "$MODPACKS_DB_FILE"
 		log INFO "Modpacks directory and file ${GREEN}created${NC}: $MODPACKS_DB_FILE"
 	fi
 }
@@ -295,6 +296,7 @@ Commands:
 	e, enable					Enable a mod.
 	d, disable					Disable a mod.
 	o, order					Change load order of a mod.
+	r, rename					Rename a mod.
 	ex, export					Export installed mods to a zip file.
 	im, import					Import mods from a zip file.
 	mc, modpack-create				Create a modpack from the currently installed mods.
@@ -306,7 +308,7 @@ Commands:
 	ns, nexus-setup				Setup Nexus Mods integration.
 	nu, nexus-update				Start Nexus mods update process.
 	up, update					Update h2mm to the latest version.
-	r, reset					Reset all installed mods.
+	rr, reset					Reset all installed mods.
 	help						Display this help message.
 For more information on usage, use h2mm <COMMAND> --help.
 Usage:
@@ -415,6 +417,19 @@ Options:
 Usage:
 	h2mm order -n "Example mod" 6
 	h2mm order -i 3 6
+EOF
+}
+
+function display_help_rename() {
+	cat << EOF
+Usage: h2mm rename [OPTIONS] <"MOD_NAME"|MOD_INDEX> <NEW_NAME>
+Rename a mod by name or index.
+Options:
+	-n "MOD_NAME"		Name of the mod to rename.
+	-i MOD_INDEX		Index of the mod to rename.
+Usage:
+	h2mm rename -n "Example mod" "New mod name"
+	h2mm rename -i 3 "New mod name"
 EOF
 }
 
@@ -1132,7 +1147,7 @@ function mod_import() {
 	[[ ! -f "$1" ]] && { log ERROR "File $1 does not exist."; exit 1; }
 
 	# reset mods before importing
-	[[ $modpack == false ]] && log INFO "Importing mods will ${RED}reset${NC} your mods."
+	[[ $modpack == false ]] && log INFO "Importing will ${RED}reset${NC} your mods."
 	mod_reset --no-path-reset
 
 	# extract in temp directory
@@ -1146,7 +1161,7 @@ function mod_import() {
 
 	# fix breaking changes if the version number (from the first line) is different
 	db_version=$(head -n 1 "$MODS_EXPORT_DIR/mods.csv")
-	current_version=$(echo "$VERSION" | awk -F. '{print $2}')
+	current_version=$(get_version_major)
 
 	[[ -z "$db_version" || ! "$db_version" =~ ^[0-9]+$ ]] && { log ERROR "Invalid version number inside mods.csv from imported archive."; exit 1; }
 
@@ -1347,6 +1362,48 @@ function mod_order {
 	log INFO "Mod ${GREEN}successfully${NC} reindexed: \"$mod_name\" went from $mod_index to $new_index."
 }
 
+function mod_rename() {
+	parse_help_has_arguments display_help_rename "$@"
+	local mod_name=""
+	local new_mod_name=""
+	local mod_index=""
+
+	# parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
+				mod_index="$2"; shift 2
+				;;
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
+				mod_name="$2"; shift 2
+				;;
+			*)
+				new_mod_name="$1"; shift 1
+				;;
+		esac
+	done
+
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to rename."; exit 1; }
+
+	# find mod files
+	get_mod_name_and_index
+
+	# verify new mod name is not empty, does not contain commas and trim it
+	new_mod_name=$(echo "$new_mod_name" | sed 's/,//g' | sed 's/^[[:space:]]*//g' | sed 's/[[:space:]]*$//g')
+	[[ -z "$new_mod_name" ]] && { log ERROR "New mod name is required."; exit 1; }
+
+	# verify if new mod name already exists in the database
+	grep -q ",$new_mod_name," "$DB_FILE"
+	[[ $? -eq 0 ]] && { log ERROR "Mod with name \"$new_mod_name\" already exists."; exit 1; }
+
+	sed -i "s/^$mod_index,ENABLED,$mod_name,/$mod_index,ENABLED,$new_mod_name,/" "$DB_FILE"
+	sed -i "s/^$mod_index,DISABLED,$mod_name,/$mod_index,DISABLED,$new_mod_name,/" "$DB_FILE"
+
+	log INFO "Mod ${GREEN}successfully${NC} renamed: $mod_name -> $new_mod_name."
+}
+
 # --- Modpack management ---
 
 function modpack_list() {
@@ -1432,7 +1489,7 @@ function modpack_create() {
 		OLD_MODS_DIR="$MODS_DIR"
 		MODS_DIR="$(mktemp -d)"
 		DB_FILE="$MODS_DIR/mods.csv"
-		echo "$(get_version_major "$VERSION")" > "$DB_FILE"
+		echo "$(get_version_major)" > "$DB_FILE"
 
 		# install selected mods to temp directory
 		for entry in "${mod_entries[@]}"; do
@@ -1945,6 +2002,9 @@ function main() {
 		"order"|"o")
 			mod_order "$@"
 			;;
+		"rename"|"r")
+			mod_rename "$@"
+			;;
 		"modpack-list"|"ml")
 			modpack_list "$@"
 			;;
@@ -1972,7 +2032,7 @@ function main() {
 		"nexus")
 			nexus "$@"
 			;;
-		"reset"|"r")
+		"reset"|"rr")
 			mod_reset "$@"
 			;;
 		"version"|"v"|"-v"|"--version")
