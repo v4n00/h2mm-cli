@@ -129,11 +129,11 @@ function get_nexus_api_key() {
 }
 
 function remove_disabled_prefix() {
-	local disabledFile="$1"
-	while [[ "$disabledFile" == disabled_* ]]; do
-		disabledFile=$(echo "$disabledFile" | sed 's/^disabled_//')
+	local disabled_file="$1"
+	while [[ "$disabled_file" == disabled_* ]]; do
+		disabled_file=$(echo "$disabled_file" | sed 's/^disabled_//')
 	done
-	echo "$disabledFile"
+	echo "$disabled_file"
 }
 
 function get_mod_name_and_index() {
@@ -1846,7 +1846,6 @@ function nexus() {
 # --- Update Check ---
 
 function check_for_h2mm_update() {
-	log INFO "Checking for updates..."
 	last_update=$(cat "$LAST_CHECKED_UPDATE_FILE")
 
 	# if last_update is not in unix time format, reset it (for version <= 0.5.0)
@@ -1860,6 +1859,8 @@ function check_for_h2mm_update() {
 	if [[ -n "$last_update" && "$(date +%s)" -lt $(("$last_update" + 7200)) ]]; then
 		return
 	fi
+
+	log INFO "Checking for updates..."
 
 	latest_version=$(curl -sS "$VERSION_URL")
 	if [[ $? -ne 0 ]]; then

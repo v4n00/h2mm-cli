@@ -31,12 +31,12 @@ function log() {
 # warning
 
 cat << EOF
-!!! WARNING !!!
+$RED!!! WARNING !!!$RED
 This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME.
 Running this script will require sudo permissions. DO NOT TRUST random scripts from the internet.
-If you want to review the script before running it, check out the mod repository for yourself:
+If you want to review the script before running it, check out the repository for yourself:
 https://github.com/v4n00/h2mm-cli
-!!! WARNING !!!
+$RED!!! WARNING !!!$RED
 
 EOF
 
@@ -117,16 +117,10 @@ latest_major=$(echo "$latest_version" | awk -F. '{print $2}')
 
 if [[ $latest_major -gt $installed_major ]]; then
 	log INFO ""
-	log INFO "Major version upgrade detected."
-	log INFO "Check out the changelogs here -> https://github.com/v4n00/h2mm-cli/releases"
-	log INFO "The script will proceed to upgrade the database file to avoid breaking changes."
-
-	# find hd2 path
-	search_dir="${HOME}"
-	target_dir="Steam/steamapps/common/Helldivers\ 2/data"
+	log INFO "${GREEN}IMPORTANT${NC}: Major version upgrade detected. Check out the changelogs here -> https://github.com/v4n00/h2mm-cli/releases"
+	log INFO "The script will proceed to upgrade the database file. Creating a backup in case anything goes wrong."
 
 	# make backup
-	log INFO "Creating a backup in case anything goes wrong."
 	h2mm export
 
 	# check if game directory is in ~/.config/h2mm/h2path
@@ -135,7 +129,7 @@ if [[ $latest_major -gt $installed_major ]]; then
 		[[ ! -d "$game_dir" ]] && { log ERROR "Helldivers 2 data directory is not valid: $game_dir." ; exit 1; }
 	else
 		log INFO "Searching for the Helldivers 2 data directory... (10 seconds timeout)"
-		game_dir=$(timeout 10 find "$search_dir" -type d -path "*/$target_dir" 2>/dev/null | head -n 1)
+		game_dir=$(timeout 10 find "$HOME" -type d -path "*/Steam/steamapps/common/Helldivers\ 2/data" 2>/dev/null | head -n 1)
 	fi
 
 	# if not found, prompt user
