@@ -231,11 +231,6 @@ function initialize_config_directory() {
 		touch "$LAST_CHECKED_UPDATE_FILE"
 		[[ $? -ne 0 ]] && { log ERROR "Could not create last checked update file."; exit 1; }
 	fi
-
-	if [[ ! -f "$UPDATES_AVAILABLE_FILE" ]]; then
-		touch "$UPDATES_AVAILABLE_FILE"
-		[[ $? -ne 0 ]] && { log ERROR "Could not create updates available file."; exit 1; }
-	fi
 }
 
 function initialize_directories() {
