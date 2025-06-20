@@ -734,6 +734,7 @@ function mod_install() {
 	local nexus_mod_version=""
 	local nexus_mod_id=""
 	local is_not_zip=false
+	local has_nexus_mod_arguments=false
 
 	# parse arguments
 	while [[ $# -gt 0 ]]; do
@@ -905,8 +906,8 @@ function mod_install() {
 		[[ ! -f "$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 	done
 
-	# sanitize mod name so it doesn't contain commas
-	mod_name=$(echo "$mod_name" | sed 's/,//g')
+	# sanitize mod name so it doesn't contain commas or underscores
+	mod_name=$(echo "$mod_name" | sed 's/,//g' | sed 's/_/ /g')
 
 	# verify duplicate mod names
 	if [[ $has_nexus_mod_arguments == false ]]; then
@@ -1375,7 +1376,7 @@ function mod_rename() {
 	sed -i "s/^$mod_index,ENABLED,$mod_name,/$mod_index,ENABLED,$new_mod_name,/" "$DB_FILE"
 	sed -i "s/^$mod_index,DISABLED,$mod_name,/$mod_index,DISABLED,$new_mod_name,/" "$DB_FILE"
 
-	log INFO "Mod ${GREEN}successfully${NC} renamed: $mod_name -> $new_mod_name."
+	log INFO "Mod ${GREEN}successfully${NC} renamed: ${ORANGE}$mod_name${NC} -> ${GREEN}$new_mod_name${NC}."
 }
 
 # --- Modpack management ---
