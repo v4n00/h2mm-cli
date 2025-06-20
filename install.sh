@@ -7,7 +7,6 @@ ORANGE='\033[0;33m'
 NC='\033[0m'
 
 DESTINATION_PATH="/usr/local/bin"
-SCRIPT_NAME="h2mm"
 REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/remove-nexus-upgrade"
 
 function log() {
@@ -32,7 +31,7 @@ function log() {
 
 log INFO "${RED}!!! WARNING !!!${NC}"
 cat << EOF
-This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/$SCRIPT_NAME.
+This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/h2mm.
 Running this script will require sudo permissions. DO NOT TRUST random scripts from the internet.
 If you want to review the script before running it, check out the repository for yourself:
 https://github.com/v4n00/h2mm-cli
@@ -52,8 +51,8 @@ breaking_changes_patches=(
 # notify if update is happening
 installed_version=""
 latest_version=""
-if [[ -x "$(command -v $SCRIPT_NAME)" ]]; then
-    installed_version=$($SCRIPT_NAME --version)
+if [[ -x "$(command -v h2mm)" ]]; then
+    installed_version=$(h2mm --version)
 
 	# if installed version isn't x.x.x crash
 	if [[ ! "$installed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -181,12 +180,12 @@ if [[ $latest_major -gt $installed_major ]]; then
 fi
 
 # install
-log INFO "Installing $SCRIPT_NAME to $DESTINATION_PATH."
-sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/$SCRIPT_NAME"
-sudo chmod +x "$DESTINATION_PATH/$SCRIPT_NAME"
+log INFO "Installing h2mm to $DESTINATION_PATH."
+sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/h2mm"
+sudo chmod +x "$DESTINATION_PATH/h2mm"
 log INFO ""
 
-[[ ! -x "$(command -v $SCRIPT_NAME)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
+[[ ! -x "$(command -v h2mm)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
 
 log INFO "Helldivers 2 Mod Manager CLI ${GREEN}successfully${NC} installed."
 log INFO "${GREEN}IMPORTANT${NC}: To install mods, you need to have installed:"
@@ -194,5 +193,6 @@ log INFO " -> \"unzip\" package for .zip archives"
 log INFO " -> \"unarchiver\" package for .rar archives"
 log INFO "If you do not know how to install these packages, please search for your linux distro on how to install packages."
 log INFO ""
-log INFO "Use the mod manager by running '$SCRIPT_NAME' in your terminal."
+log INFO "Use the mod manager by running 'h2mm' in your terminal."
+log INFO "Check out the Nexus Mods integration by running 'h2mm nexus'."
 log INFO "Made with love <3 by v4n and contributors."
