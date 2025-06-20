@@ -22,7 +22,7 @@ API_KEY_FILE="${H2CONFIG_DIR}/api_key"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
 
-VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/remove-nexus-upgrade/master/version"
+VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/master/master/version"
 
 breaking_changes_patches=(
     ["2"]='sed -i "s/^\([0-9]\+\),/\1,ENABLED,/" "$1/mods.csv"'

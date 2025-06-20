@@ -7,7 +7,7 @@ ORANGE='\033[0;33m'
 NC='\033[0m'
 
 DESTINATION_PATH="/usr/local/bin"
-REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/remove-nexus-upgrade"
+REPO_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master"
 
 function log() {
 	local type="$1"
