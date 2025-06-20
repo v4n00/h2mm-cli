@@ -2,7 +2,7 @@
 
 Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no Linux mod manager available and I like being a nerd by using CLI tools instead of GUIs, this project was born.
 
-This mod manager is complete, the version will always [remain at 0.x.x](https://0ver.org/). Version 0.6.x will be the last version of this mod manager.
+This mod manager is complete, the version will always [remain at 0.x.x](https://0ver.org/). Version 0.6.x is the last version.
 
 ## Installation
 
