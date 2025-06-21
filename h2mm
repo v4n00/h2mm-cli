@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.1"
+VERSION="0.6.2"
 
 # --- Globals ---
 
@@ -1237,7 +1237,7 @@ function mod_order {
 	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
 	for base_name in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, '{print $7}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
+		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, '{print $6}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
 	done
 
 	# step 2.2 - reverse sort the files_to_replace if we are in descending order
@@ -1334,7 +1334,7 @@ function mod_order {
 		sed -i "$((new_index + 1))i $entry" "$DB_FILE"
 	fi
 
-	log INFO "Mod ${GREEN}successfully${NC} reindexed: \"$mod_name\" went from $mod_index to $new_index."
+	log INFO "Mod ${GREEN}successfully${NC} reindexed: $mod_name: ${ORANGE}$mod_index${NC} -> ${GREEN}$new_index${NC}."
 }
 
 function mod_rename() {
