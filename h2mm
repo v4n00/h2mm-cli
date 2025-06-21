@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.0"
+VERSION="0.6.1"
 
 # --- Globals ---
 
@@ -1053,7 +1053,7 @@ function mod_list() {
         printf "%2s. [%s%s%s/%s%s%s] %s %s\n", mod_index, STATUS_COLOR, mod_status, NC, MOD_TYPE_COLOR, mod_type, NC, mod_name, mod_version;
 		if (verbose == "true") {
 			gsub(/ /,"\n   -> ", mod_files);
-			if (mod_id != "") printf "   => Nexus mod ID: %s / Nexus file ID: %s\n", mod_id;
+			if (mod_id != "") printf "   => Nexus mod ID: %s\n", mod_id;
 			printf "   -> %s\n", mod_files;
 		}
     }' "$DB_FILE"
