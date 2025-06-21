@@ -22,6 +22,17 @@ API_KEY_FILE="${H2CONFIG_DIR}/api_key"
 LAST_CHECKED_UPDATE_FILE="${H2CONFIG_DIR}/last_update"
 BACKUPS_DIR="${H2CONFIG_DIR}/backups"
 
+DB_MOD_ID_POS=1
+DB_MOD_STATUS_POS=2
+DB_MOD_NAME_POS=3
+DB_MOD_NEXUS_ID_POS=4
+DB_MOD_NEXUS_VERSION_POS=5
+DB_MOD_FILES_POS=6
+
+DB_MODPACK_ID_POS=1
+DB_MODPACK_STATUS_POS=2
+DB_MODPACK_NAME_POS=3
+
 VERSION_URL="https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/version"
 
 breaking_changes_patches=(
@@ -59,23 +70,23 @@ function get_extension() {
 }
 
 function get_index_by_entry_from_db() {
-	echo "$1" | awk -F, '{print $1}'
+	echo "$1" | awk -F, -v pos="$DB_MOD_ID_POS" '{print $pos}'
 }
 
 function get_name_by_entry_from_db() {
-	echo "$1" | awk -F, '{print $3}'
+	echo "$1" | awk -F, -v pos="$DB_MOD_NAME_POS" '{print $pos}'
 }
 
 function get_nexus_mod_id_by_entry_from_db() {
-	echo "$1" | awk -F, '{print $4}'
+	echo "$1" | awk -F, -v pos="$DB_MOD_NEXUS_ID_POS" '{print $pos}'
 }
 
 function get_nexus_mod_version_by_entry_from_db() {
-	echo "$1" | awk -F, '{print $5}'
+	echo "$1" | awk -F, -v pos="$DB_MOD_NEXUS_VERSION_POS" '{print $pos}'
 }
 
 function get_files_by_entry_from_db() {
-	echo "$1" | cut -d',' -f6- | tr ',' ' ' | head -1
+	echo "$1" | cut -d',' -f"$DB_MOD_FILES_POS"- | tr ',' ' ' | head -1
 }
 
 function disable_all_modpacks() {
@@ -83,7 +94,7 @@ function disable_all_modpacks() {
 }
 
 function get_entry_from_db_by_nexus_mod_id() {
-	echo "$(awk -F, -v id="$1" 'NR > 1 && $4 == id {print $0}' "$DB_FILE")"
+	echo "$(awk -F, -v pos="$DB_MOD_NEXUS_ID_POS" -v id="$1" 'NR > 1 && $pos == id {print $0}' "$DB_FILE")"
 }
 
 function parse_help_no_arguments() {
@@ -145,7 +156,7 @@ function get_mod_name_and_index() {
 		mod_name=$(get_name_by_entry_from_db "$entry")
 	elif [[ -n "$mod_name" ]]; then # if mod name exists
 		entry=$(grep -F ",$mod_name," "$DB_FILE")
-		mod_index=$(echo "$entry" | awk -F, '{print $1}' | head -1)
+		mod_index=$(echo "$entry" | awk -F, -v pos="$DB_MOD_ID_POS" '{print $pos}' | head -1)
 	fi
 
 	if [[ -z "$entry" || -z "$mod_index" || -z "$mod_name" ]]; then
@@ -153,7 +164,7 @@ function get_mod_name_and_index() {
 		mod_index=-1
 	fi
 
-	status=$(echo "$entry" | awk -F, '{print $2}')
+	status=$(echo "$entry" | awk -F, -v pos="$DB_MOD_STATUS_POS" '{print $pos}')
 }
 
 function get_modpack_name_and_index() {
@@ -162,7 +173,7 @@ function get_modpack_name_and_index() {
 		modpack_name=$(get_name_by_entry_from_db "$entry")
 	elif [[ -n "$modpack_name" ]]; then # if modpack name exists
 		entry=$(grep ",$modpack_name$" "$MODPACKS_DB_FILE")
-		modpack_index=$(echo "$entry" | awk -F, '{print $1}' | head -1)
+		modpack_index=$(echo "$entry" | awk -F, -v pos="$DB_MOD_ID_POS" '{print $pos}' | head -1)
 	fi
 
 	[[ -z "$entry" || -z "$modpack_index" || -z "$modpack_name" ]] && { log ERROR "Modpack not found."; exit 1; }
@@ -944,7 +955,7 @@ function mod_install() {
 	done
 
 	# add entry to database
-	next_id=$(awk -F, 'NR > 1 {last_id = $1} END {print last_id + 1}' "$DB_FILE")
+	next_id=$(awk -F, -v pos="$DB_MOD_ID_POS" 'NR > 1 {last_id = $pos} END {print last_id + 1}' "$DB_FILE")
 	entry="$next_id,ENABLED,$mod_name,$nexus_mod_id,$nexus_mod_version,${target_files[*]}"
 
 	echo "$entry" >> "$DB_FILE"
@@ -1000,7 +1011,7 @@ function mod_uninstall() {
     sed -i "/^$mod_index,/d" "$DB_FILE"
 
     # reindex the database
-    mods_to_reindex=($(awk -F, -v idx=$mod_index 'NR > 1 && $1 > idx {print $1}' "$DB_FILE"))
+    mods_to_reindex=($(awk -F, -v pos="$DB_MOD_ID_POS" -v idx=$mod_index 'NR > 1 && $pos > idx {print $pos}' "$DB_FILE"))
     for idx in "${mods_to_reindex[@]}"; do
         sed -i "s/^$idx,/$(($idx - 1)),/" "$DB_FILE"
     done
@@ -1024,36 +1035,36 @@ function mod_list() {
 	# check if a modpack is enabled
 	modpack_entry=$(grep "ENABLED" "$MODPACKS_DB_FILE")
 	if [[ -n "$modpack_entry" ]]; then
-		modpack_name=$(echo "$modpack_entry" | awk -F, '{print $3}')
+		modpack_name=$(echo "$modpack_entry" | awk -F, -v pos="$DB_MODPACK_NAME_POS" '{print $pos}')
 		log INFO "Modpack ${GREEN}enabled${NC}: $modpack_name."
 	fi
 
     log INFO "Installed mods:"
 
-    awk -v GREEN="$GREEN" -v ORANGE="$ORANGE" -v BLUE="$BLUE" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -F, 'NR > 1 {
-		mod_index = $1;
-		mod_status = $2;
-		mod_name = $3;
-		mod_id = $4;
-		mod_version = $5;
-		mod_files = $6;
+    awk -v GREEN="$GREEN" -v ORANGE="$ORANGE" -v BLUE="$BLUE" -v RED="$RED" -v NC="$NC" -v DB_MOD_ID_POS="$DB_MOD_ID_POS" -v DB_MOD_STATUS_POS="$DB_MOD_STATUS_POS" -v DB_MOD_NAME_POS="$DB_MOD_NAME_POS" -v DB_MOD_NEXUS_ID_POS="$DB_MOD_NEXUS_ID_POS" -v DB_MOD_NEXUS_VERSION_POS="$DB_MOD_NEXUS_VERSION_POS" -v DB_MOD_FILES_POS="$DB_MOD_FILES_POS" -v verbose="$verbose" -F, 'NR > 1 {
+		mod_index = $DB_MOD_ID_POS;
+		mod_status = $DB_MOD_STATUS_POS;
+		mod_name = $DB_MOD_NAME_POS;
+		mod_nexus_id = $DB_MOD_NEXUS_ID_POS;
+		mod_nexus_version = $DB_MOD_NEXUS_VERSION_POS;
+		mod_files = $DB_MOD_FILES_POS;
 		mod_details = "";
 
         STATUS_COLOR = (mod_status == "DISABLED") ? RED : GREEN;
-		if (mod_id == "") {
+		if (mod_nexus_id == "") {
 			mod_type = "LOCAL";
 			MOD_TYPE_COLOR = BLUE;
-			mod_version = "";
+			mod_nexus_version = "";
 		} else {
 			mod_type = "NEXUS";
 			MOD_TYPE_COLOR = ORANGE;
-			mod_version = "| ver: " mod_version;
+			mod_nexus_version = "| ver: " mod_nexus_version;
 		}
 
-        printf "%2s. [%s%s%s/%s%s%s] %s %s\n", mod_index, STATUS_COLOR, mod_status, NC, MOD_TYPE_COLOR, mod_type, NC, mod_name, mod_version;
+        printf "%2s. [%s%s%s/%s%s%s] %s %s\n", mod_index, STATUS_COLOR, mod_status, NC, MOD_TYPE_COLOR, mod_type, NC, mod_name, mod_nexus_version;
 		if (verbose == "true") {
 			gsub(/ /,"\n   -> ", mod_files);
-			if (mod_id != "") printf "   => Nexus mod ID: %s\n", mod_id;
+			if (mod_nexus_id != "") printf "   => Nexus mod ID: %s\n", mod_nexus_id;
 			printf "   -> %s\n", mod_files;
 		}
     }' "$DB_FILE"
@@ -1214,9 +1225,9 @@ function mod_order {
 
 	# get entries between the indexes
 	if [[ $ascending_order == true ]]; then
-		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 > mod_index && $1 <= new_index {print $0}' "$DB_FILE")
+		entries=$(awk -v pos="$DB_MOD_ID_POS" -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $pos > mod_index && $pos <= new_index {print $0}' "$DB_FILE")
 	else
-		entries=$(awk -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $1 < mod_index && $1 >= new_index {print $0}' "$DB_FILE")
+		entries=$(awk -v pos="$DB_MOD_ID_POS" -v mod_index="$mod_index" -v new_index="$new_index" -F, 'NR > 1 && $pos < mod_index && $pos >= new_index {print $0}' "$DB_FILE")
 	fi
 
 	# get files for the current mod
@@ -1237,7 +1248,7 @@ function mod_order {
 	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
 	for base_name in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, '{print $6}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
+		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, -v pos="$DB_MOD_FILES_POS" '{print $pos}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
 	done
 
 	# step 2.2 - reverse sort the files_to_replace if we are in descending order
@@ -1312,7 +1323,7 @@ function mod_order {
 	sed -i "s/^$mod_index,/t_$mod_index,/" "$DB_FILE"
 
 	# step 5.2 - reindex the rest of the mods
-	idxs=$(echo "$entries" | awk -F, '{print $1}' | tr ' ' '\n')
+	idxs=$(echo "$entries" | awk -F, -v pos="$DB_MOD_ID_POS" '{print $pos}' | tr ' ' '\n')
 
 	# step 5.3 - reverse sort the idxs if we are in descending order
 	[[ $ascending_order == false ]] && idxs=$(echo "$idxs" | sort -r)
@@ -1395,10 +1406,10 @@ function modpack_list() {
 		modpack_contents=""
 
 		# get modpack files
-		modpack_files=$(awk -F, 'NR > 1 {print $3 ".tar.gz"}' "$MODPACKS_DB_FILE")
+		modpack_files=$(awk -F, -v pos="$DB_MODPACK_NAME_POS" 'NR > 1 {print $pos ".tar.gz"}' "$MODPACKS_DB_FILE")
 
 		for file in $modpack_files; do
-			mods=$(tar -xzvf "$MODPACKS_DIR/$file" --to-stdout "Helldivers 2 Mods/mods.csv" 2>/dev/null | awk -F, 'NR > 1 {print "   -> " $3}')
+			mods=$(tar -xzvf "$MODPACKS_DIR/$file" --to-stdout "Helldivers 2 Mods/mods.csv" 2>/dev/null | awk -F, -v pos="$DB_MODPACK_NAME_POS" 'NR > 1 {print "   -> " $pos}')
 
 			modpack_contents="${modpack_contents}${mods};"
 		done
@@ -1406,19 +1417,24 @@ function modpack_list() {
 
 	log INFO "Saved modpacks:"
 
-	awk -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -v modpack_contents="$modpack_contents" -F, 'BEGIN {
+	awk -F, -v GREEN="$GREEN" -v RED="$RED" -v NC="$NC" -v verbose="$verbose" -v modpack_contents="$modpack_contents" -v DB_MODPACK_ID_POS="$DB_MODPACK_ID_POS" -v DB_MODPACK_STATUS_POS="$DB_MODPACK_STATUS_POS" -v DB_MODPACK_NAME_POS="$DB_MODPACK_NAME_POS" 'BEGIN {
 		if(verbose == "true") {
 			split(modpack_contents, modpack_array, ";")
 		}
 	}
-	NR > 1{
-	color = ($2 == "DISABLED") ? RED : GREEN;
-	if (verbose == "false") {
-		$4 = "";
-	} else {
-		$4 = "\n" modpack_array[NR - 1];
-	}
-	printf "%2s. [%s%s%s] %s%s\n", $1, color, $2, NC, $3, $4}' "$MODPACKS_DB_FILE"
+	NR > 1 {
+		modpack_index = $DB_MODPACK_ID_POS;
+		modpack_status = $DB_MODPACK_STATUS_POS;
+		modpack_name = $DB_MODPACK_NAME_POS;
+
+		color = (modpack_status == "DISABLED") ? RED : GREEN;
+		if (verbose == "false") {
+			modpack_mods = "";
+		} else {
+			modpack_mods = "\n" modpack_array[NR - 1];
+		}
+		printf "%2s. [%s%s%s] %s%s\n", modpack_index, color, modpack_status, NC, modpack_name, modpack_mods;
+	}' "$MODPACKS_DB_FILE"
 }
 
 function modpack_create() {
@@ -1455,9 +1471,9 @@ function modpack_create() {
 		# grab all the entries from the database from the indices
 		for index in "${mod_indices[@]}"; do
 			[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
-			[[ $index -lt 1 || $index -gt $(awk -F, 'END {print $1}' "$DB_FILE" ) ]] && { log ERROR "Mod index out of range."; exit 1; }
+			[[ $index -lt 1 || $index -gt $(awk -F, -v pos="$DB_MODPACK_ID_POS" 'END {print $pos}' "$DB_FILE" ) ]] && { log ERROR "Mod index out of range."; exit 1; }
 
-			IFS= mod_entries+=($(awk -v idx=$index -F, 'NR > 1 && $1 == idx {print $0}' "$DB_FILE")); unset IFS
+			IFS= mod_entries+=($(awk -F, -v idx=$index -v pos="$DB_MOD_ID_POS" 'NR > 1 && $pos == idx {print $0}' "$DB_FILE")); unset IFS
 		done
 
 		# overwrite all paths to create a custom directory that will hold the mods specified, the mods will be "installed" there
@@ -1493,7 +1509,7 @@ function modpack_create() {
 	[[ $(wc -l < "$MODPACKS_DB_FILE") -le 1 ]] && log INFO "If this is your first modpack, it is ${ORANGE}recommended${NC} to create a separate modpack with your main mods."
 
 	# add entry to database
-	next_id=$(awk -F, 'NR > 1 {last_id = $1} END {print last_id + 1}' "$MODPACKS_DB_FILE")
+	next_id=$(awk -F, -v pos="$DB_MODPACK_ID_POS" 'NR > 1 {last_id = $pos} END {print last_id + 1}' "$MODPACKS_DB_FILE")
 	echo "$next_id,DISABLED,$modpack_name" >> "$MODPACKS_DB_FILE"
 }
 
@@ -1832,7 +1848,7 @@ function nexus() {
 		mod_install "$output_file" -n "$mod_name" --mod-id "$nexus_mod_id" --version "$nexus_mod_version"
 
 		# get the current mod index from what we just installed, last line of the db
-		new_mod_index=$(get_index_by_entry_from_db "$(awk -F, 'END {print $1}' "$DB_FILE")")
+		new_mod_index=$(get_index_by_entry_from_db "$(awk -F, -v pos="$DB_MOD_ID_POS" 'END {print $pos}' "$DB_FILE")")
 		[[ -z "$new_mod_index" ]] && { log ERROR "Could not get current mod index."; exit 1; }
 
 		[[ $mod_index -ne $new_mod_index ]] && mod_order -i "$new_mod_index" "$mod_index"
