@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.2"
+VERSION="0.6.3"
 
 # --- Globals ---
 
@@ -141,9 +141,17 @@ function get_nexus_api_key() {
 
 function remove_disabled_prefix() {
 	local disabled_file="$1"
-	while [[ "$disabled_file" == disabled_* ]]; do
-		disabled_file=$(echo "$disabled_file" | sed 's/^disabled_//')
-	done
+
+	if [[ "$disabled_file" =~ ^disabled_[0-9]+_[A-Za-z0-9]+ ]]; then
+		# new format: disabled_<timestamp>_<filename>
+		disabled_file=$(echo "$disabled_file" | sed -E 's/^disabled_[0-9]+_//')
+	else
+		# old format: disabled_<filename>
+		while [[ "$disabled_file" == disabled_* ]]; do
+			disabled_file=$(echo "$disabled_file" | sed 's/^disabled_//')
+		done
+	fi
+
 	echo "$disabled_file"
 }
 
@@ -542,7 +550,7 @@ function downgrade_mods() {
 				log INFO "Downgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
 
 				# save changes in database as well
-				sed -i "s/\(\b$mod\b\)/$new_patch/" "$DB_FILE"
+				sed -i "s/\b$mod\b/$new_patch/" "$DB_FILE"
 			fi
 		done
 	done
@@ -555,11 +563,9 @@ function upgrade_mods() {
 
 	# opposite of downgrade_mods
 	for file in $files; do
-		# remove disabled_ prefix if it exists
-		file=$(remove_disabled_prefix "$file")
-
 		current_version=$(get_patch_number "$file")
 		base_name=$(get_basename "$file")
+		base_name=$(remove_disabled_prefix "$base_name") # remove disabled_ prefix if it exists
 
 		# basically save the lowest number, by limiting the setting of the key to the first time we see it
 		[[ -z "${upgrade_versions["$base_name"]+unset}" ]] && upgrade_versions["$base_name"]=$current_version
@@ -584,7 +590,7 @@ function upgrade_mods() {
 				[[ $? -ne 0 ]] && { log ERROR "Could not upgrade mod file $mod."; exit 1; }
 				log INFO "Upgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
 
-				sed -i "s/\(\b$mod\b\)/$new_patch/" "$DB_FILE"
+				sed -i "s/\b$mod\b/$new_patch/" "$DB_FILE"
 			fi
 		done
 	done
@@ -627,15 +633,14 @@ function mod_disable() {
 		exit 1
 	fi
 
+	hash=$(date +%s%3N) # generate a unique hash for files
+
 	# disable each mod file by adding disabled_ to the start of the filename
 	current_mod_files=$(get_files_by_entry_from_db "$entry")
 	for file in $current_mod_files; do
 		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
 
-		disabled_file="disabled_$file"
-		while [[ -f "$MODS_DIR/$disabled_file" ]]; do
-			disabled_file="disabled_$disabled_file"
-		done
+		disabled_file="disabled_${hash}_${file}"
 
 		mv "$MODS_DIR/$file" "$MODS_DIR/$disabled_file"
 
@@ -643,7 +648,7 @@ function mod_disable() {
 		log INFO "Disabled ${ORANGE}$file${NC} (changed to ${GREEN}\$MODS_DIR/$disabled_file${NC})."
 
 		# save change to db
-		sed -i "/^$mod_index,/ s/\(\b$file\b\)/$disabled_file/" "$DB_FILE"
+		sed -i "/^$mod_index,/ s/\b$file\b/$disabled_file/" "$DB_FILE"
 	done
 
 	# downgrade mods with greater version number
@@ -706,7 +711,7 @@ function mod_enable() {
 		log INFO "Enabled ${ORANGE}$file${NC} (changed to ${GREEN}\$MODS_DIR/$enabled_file${NC})."
 
 		# save change to db
-		sed -i "/^$mod_index,/ s/\(\b$file\b\)/$enabled_file/" "$DB_FILE"
+		sed -i "/^$mod_index,/ s/\b$file\b/$enabled_file/" "$DB_FILE"
 	done
 
 	# update the database
@@ -951,7 +956,7 @@ function mod_install() {
 
 		# verify installation worked
 		[[ $? -ne 0 ]] && { log ERROR "Could not install mod file $file."; exit 1; }
-		log INFO "Mod file ${ORANGE}$(echo "$file" | cut -d'/' -f4-)${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
+		log INFO "Mod file ${ORANGE}$(echo "$file" | sed -E 's/\/tmp\/tmp.[a-zA-Z0-9]+\///')${NC} installed at ${GREEN}\$MODS_DIR/$target_file${NC}."
 	done
 
 	# add entry to database
@@ -1281,7 +1286,7 @@ function mod_order {
 			log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
 
 			# update db
-			sed -i "s/\(\b$file\b\)/$new_file/" "$DB_FILE"
+			sed -i "s/\b$file\b/$new_file/" "$DB_FILE"
 		done
 	done
 
@@ -1309,7 +1314,7 @@ function mod_order {
 			[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
 
 			# update file names
-			entry=$(echo "$entry" | sed "s/\(\b$file\b\)/$new_file/")
+			entry=$(echo "$entry" | sed "s/\b$file\b/$new_file/")
 		fi
 
 		# move back temp file
