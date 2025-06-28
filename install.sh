@@ -27,17 +27,7 @@ function log() {
 
 # --- Main ---
 
-# warning
-
-log INFO "${RED}!!! WARNING !!!${NC}"
-cat << EOF
-This script will install Helldivers 2 Mod Manager CLI for Linux to $DESTINATION_PATH/h2mm.
-Running this script will require sudo permissions. DO NOT TRUST random scripts from the internet.
-If you want to review the script before running it, check out the repository for yourself:
-https://github.com/v4n00/h2mm-cli
-EOF
-log INFO "${RED}!!! WARNING !!!${NC}"
-log INFO ""
+log INFO "Running h2mm CLI Installer (https://github.com/v4n00/h2mm-cli)"
 
 # breaking changes hash table
 breaking_changes_patches=(
@@ -101,7 +91,7 @@ if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
 else
     # not steam deck
     # set another path if needed
-	log PROMPT "Install the script to $DESTINATION_PATH or specify another path (must be included in \$PATH)? (Y/path): "
+	log PROMPT "Install the script to ${ORANGE}$DESTINATION_PATH${NC} or specify another path (must be included in \$PATH)? (Y/path): "
     IFS= read -e response
 
     if [[ "$response" != "y" && "$response" != "Y" && -n "$response" ]]; then
@@ -180,9 +170,17 @@ if [[ $latest_major -gt $installed_major ]]; then
 fi
 
 # install
-log INFO "Installing h2mm to $DESTINATION_PATH."
-sudo curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/h2mm"
-sudo chmod +x "$DESTINATION_PATH/h2mm"
+log INFO "Installing h2mm to ${ORANGE}$DESTINATION_PATH${NC}."
+
+# check if we need sudo based on destination path
+SUDO_CMD=""
+if [[ ! -w "$DESTINATION_PATH" ]]; then
+    SUDO_CMD="sudo"
+    log INFO "Destination path ${RED}requires${NC} elevated permissions, using sudo."
+fi
+
+$SUDO_CMD curl "$REPO_URL"/h2mm --output "$DESTINATION_PATH/h2mm"
+$SUDO_CMD chmod +x "$DESTINATION_PATH/h2mm"
 log INFO ""
 
 [[ ! -x "$(command -v h2mm)" ]] && { log ERROR "Installation failed. Mod manager was not found in \$PATH." ; exit 1; }
@@ -195,4 +193,4 @@ log INFO "If you do not know how to install these packages, please search for yo
 log INFO ""
 log INFO "Use the mod manager by running 'h2mm' in your terminal."
 log INFO "Check out the ${ORANGE}Nexus Mods integration${NC} by running 'h2mm nexus-setup'."
-log INFO "Made with love <3 by v4n and contributors."
+log INFO "Made with <3 by v4n and contributors."
