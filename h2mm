@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.3"
+VERSION="0.6.4"
 
 # --- Globals ---
 
@@ -305,7 +305,7 @@ Commands:
 	mc, modpack-delete				Delete a modpack.
 	mo, modpack-overwrite				Overwrite a modpack.
 	mr, modpack-reset				Reset all installed modpacks.
-	ns, nexus-setup				Setup Nexus Mods integration.
+	ns, nexus-setup					Setup Nexus Mods integration.
 	nu, nexus-update				Start Nexus mods update process.
 	up, update					Update h2mm to the latest version.
 	rs, reset					Reset all installed mods.
@@ -502,8 +502,6 @@ EOF
 
 # --- Main Functions ---
 
-# Upgrade/downgrade logic
-
 function downgrade_mods() {
 	local files="$1"
 	declare -A downgrades_versions
@@ -556,47 +554,77 @@ function downgrade_mods() {
 	done
 }
 
-function upgrade_mods() {
-	local files="$1"
-	declare -A upgrade_versions
-	declare -A upgrades_to_apply
+function mod_enable() {
+	parse_help_has_arguments display_help_enable "$@"
+	local mod_name=""
+	local mod_index=""
 
-	# opposite of downgrade_mods
-	for file in $files; do
-		current_version=$(get_patch_number "$file")
-		base_name=$(get_basename "$file")
-		base_name=$(remove_disabled_prefix "$base_name") # remove disabled_ prefix if it exists
-
-		# basically save the lowest number, by limiting the setting of the key to the first time we see it
-		[[ -z "${upgrade_versions["$base_name"]+unset}" ]] && upgrade_versions["$base_name"]=$current_version
-
-		[[ -z "${upgrades_to_apply["$base_name"]+unset}" ]] && upgrades_to_apply["$base_name"]=$(echo $files | tr ' ' '\n' | grep "$base_name" | sed -E "s/(.*_[0-9]+).*/\1/" | sort -u | wc -l)
+	# parse arguments
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			"-i")
+				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
+				mod_index="$2"; shift 2
+				;;
+			"-n")
+				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
+				mod_name="$2"; shift 2
+				;;
+			*)
+				$display_help; exit 0
+				;;
+		esac
 	done
 
-	for base_name in "${!upgrades_to_apply[@]}"; do
-		IFS=$'\n' mods_to_upgrade=($(ls "$MODS_DIR/$base_name"*.patch_* 2>/dev/null | sort -rV)); unset IFS
+	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to enable."; exit 1; }
 
-		for mod in "${mods_to_upgrade[@]}"; do
-			mod=$(get_filename_without_path "$mod")
-			patch_version=$(get_patch_number "$mod")
+	# find mod files
+	get_mod_name_and_index
+	[[ "$status" == "ENABLED" ]] && { log ERROR "Mod $mod_name is already enabled."; exit 1; }
 
-			if [[ $patch_version -ge ${upgrade_versions[$base_name]} ]]; then
-				new_version=$((patch_version + upgrades_to_apply["$base_name"]))
-				extension=$(get_extension "$mod")
+	# in case of nexus mod
+	nexus_mod_id=$(get_nexus_mod_id_by_entry_from_db "$entry")
+	nexus_mod_version=$(get_nexus_mod_version_by_entry_from_db "$entry")
 
-				new_patch="${base_name}.patch_${new_version}${extension}"
-				mv "$MODS_DIR/$mod" "$MODS_DIR/$new_patch"
+	current_mod_files=$(get_files_by_entry_from_db "$entry")
+	old_index="$mod_index"
+	mod_index=-1 # we will re-order the mod after installation, so we need to reset mod_index
 
-				[[ $? -ne 0 ]] && { log ERROR "Could not upgrade mod file $mod."; exit 1; }
-				log INFO "Upgraded ${ORANGE}$mod${NC} to ${GREEN}\$MODS_DIR/$new_patch${NC}."
+	# move files to a temp directory that has the same name as the mod
+	temp_dir=$(mktemp -d)
+	[[ ! -d "$temp_dir" ]] && { log ERROR "Could not create temporary directory."; exit 1; }
 
-				sed -i "s/\b$mod\b/$new_patch/" "$DB_FILE"
-			fi
-		done
+	for file in $current_mod_files; do
+		[[ ! -f "$MODS_DIR/$file" ]] && { log ERROR "Mod file $file does not exist."; exit 1; }
+
+		new_file=$(remove_disabled_prefix "$file")
+		cp "$MODS_DIR/$file" "$temp_dir/$new_file"
+		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file to temporary directory."; exit 1; }
 	done
+
+	# run install function to install the mod files
+	silent=true # disable logging for this process
+
+	# uninstall mod
+	mod_uninstall -i "$old_index"
+
+	if [[ -n "$nexus_mod_id" && -n "$nexus_mod_version" ]]; then
+		mod_install "$temp_dir"/* -n "$mod_name" --mod-id "$nexus_mod_id" --version "$nexus_mod_version"
+	else
+		mod_install "$temp_dir"/* -n "$mod_name"
+	fi
+
+	# order mod back to original place
+	if [[ $next_id -ne $old_index ]]; then
+		mod_order -i "$next_id" "$old_index"
+	fi
+
+	silent=false # re-enable logging
+
+	log INFO "Mod ${GREEN}successfully${NC} enabled: $mod_name."
+
+	disable_all_modpacks
 }
-
-# Mod management
 
 function mod_disable() {
 	parse_help_has_arguments display_help_disable "$@"
@@ -659,66 +687,6 @@ function mod_disable() {
 
 	[[ $? -ne 0 ]] && { log ERROR "Could not disable mod."; exit 1; }
 	log INFO "Mod ${GREEN}successfully${NC} disabled: $mod_name."
-
-	disable_all_modpacks
-}
-
-function mod_enable() {
-	parse_help_has_arguments display_help_enable "$@"
-	local mod_name=""
-	local mod_index=""
-
-	# parse arguments
-	while [[ $# -gt 0 ]]; do
-		case "$1" in
-			"-i")
-				[[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]] && { log ERROR "Invalid mod index."; exit 1; }
-				mod_index="$2"; shift 2
-				;;
-			"-n")
-				[[ -z "$2" ]] && { log ERROR "Mod name is required."; exit 1; }
-				mod_name="$2"; shift 2
-				;;
-			*)
-				$display_help; exit 0
-				;;
-		esac
-	done
-
-	[[ -z "$mod_name" && -z "$mod_index" ]] && { log ERROR "Mod name or index is required to enable."; exit 1; }
-
-	# find mod files
-	get_mod_name_and_index
-
-	[[ "$status" == "ENABLED" ]] && { log ERROR "Mod $mod_name is already enabled."; exit 1; }
-
-	current_mod_files=$(get_files_by_entry_from_db "$entry")
-
-	# upgrade mods with lower version number
-	upgrade_mods "$current_mod_files"
-
-	# enable each mod file by removing disabled_ from the start of the filename
-	for file in $current_mod_files; do
-		enabled_file=$(remove_disabled_prefix "$file")
-
-		# check if the files exists
-		[[ -f "$MODS_DIR/$file" ]] || { log ERROR "Mod file $file does not exist."; exit 1; }
-
-		mv "$MODS_DIR/$file" "$MODS_DIR/$enabled_file"
-
-		# check if the file was moved successfully
-		[[ $? -ne 0 ]] && { log ERROR "Could not enable mod file $file."; exit 1; }
-		log INFO "Enabled ${ORANGE}$file${NC} (changed to ${GREEN}\$MODS_DIR/$enabled_file${NC})."
-
-		# save change to db
-		sed -i "/^$mod_index,/ s/\b$file\b/$enabled_file/" "$DB_FILE"
-	done
-
-	# update the database
-	sed -i "/^$mod_index,/s/DISABLED/ENABLED/" "$DB_FILE"
-
-	[[ $? -ne 0 ]] && { log ERROR "Could not enable mod."; exit 1; }
-	log INFO "Mod ${GREEN}successfully${NC} enabled: $mod_name."
 
 	disable_all_modpacks
 }
@@ -1253,7 +1221,7 @@ function mod_order {
 	# step 2.1 - iterate over the basenames, find and store the files with the same basenames as the ones we want to upgrade/downgrade
 	declare -A files_to_replace
 	for base_name in "${!replace_count[@]}"; do
-		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, -v pos="$DB_MOD_FILES_POS" '{print $pos}' | grep -o "$base_name\.patch_[^ ]*"); unset IFS
+		IFS= files_to_replace["$base_name"]=$(echo "$entries" | awk -F, -v pos="$DB_MOD_FILES_POS" '{print $pos}' | grep -o "\b$base_name\.patch_[^ ]*"); unset IFS
 	done
 
 	# step 2.2 - reverse sort the files_to_replace if we are in descending order
@@ -1264,6 +1232,7 @@ function mod_order {
 	# move current mod files to "t_$file" so we can move the new files to the correct index
 	for file in $current_mod_files; do
 		mv "$MODS_DIR/$file" "$MODS_DIR/t_$file"
+		log INFO "Moving ${ORANGE}$file${NC} to ${GREEN}t_$file${NC} for reindexing."
 		[[ $? -ne 0 ]] && { log ERROR "Could not move mod file $file."; exit 1; }
 	done
 
@@ -1307,7 +1276,7 @@ function mod_order {
 			operation="+"; [[ $ascending_order == false ]] && operation="-"
 			new_file="${base_name}.patch_$(($patch_number $operation $size))${extension}"
 
-			log INFO "Reindexing ${ORANGE}$file${NC} to ${GREEN}$new_file${NC}."
+			log INFO "Reindexing ${ORANGE}t_$file${NC} to ${GREEN}$new_file${NC}."
 
 			# dont forget current mod files are prefixed with t_
 			mv "$MODS_DIR/t_$file" "$MODS_DIR/t_$new_file"
@@ -1771,9 +1740,11 @@ MimeType=x-scheme-handler/nxm;"
 		xdg-mime default "$desktop_file" x-scheme-handler/nxm
 	fi
 
-	log INFO "You can now use the Nexus Mods integration."
-	log INFO "To use it, go to a mod page and click on the \"Vortex\" or \"Download with Manager\" button."
+	log INFO "You can now use the Nexus Mods integration!"
+	log INFO "To use it, go to a mod page and click on the \"Vortex\" button on the front page or \"Mod manager download\" button inside the mod files section."
 	log INFO "Your browser will ask you to open the link with h2mm."
+	log INFO "Not all mods have this button, it all depends the mod author."
+	log INFO "A system restart might be needed for the changes to take effect."
 }
 
 function nexus() {
