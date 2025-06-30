@@ -2,23 +2,18 @@
 
 Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no Linux mod manager available and I like being a nerd by using CLI tools instead of GUIs, this project was born.
 
-This mod manager is complete, the version will always [remain at 0.x.x](https://0ver.org/). Version 0.6.x is the last version.
-
 ## Installation
 
 Pre-requisites:
 
-- You must have the `unzip` package installed for zip archives;
-- You might want to have the `unarchiver` package installed for rar archives.
+- You must have the `unzip` package installed for `zip` archives;
+- You might want to have the `unarchiver` package installed for `rar` and `7z` archives.
 
 To install Helldivers 2 Mod Manager CLI run the following command in your terminal:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 ```
-
-> [!CAUTION]
-> Running this script will require sudo permissions. **DO NOT TRUST** random scripts from the internet. If you want to review the script before running it, check out the repository for yourself.
 
 ## Usage
 
@@ -105,18 +100,6 @@ h2mm nexus-setup
 ```
 
 You will be walked through the setup process, which will ask you for your Nexus Mods API key and your preferred terminal.
-
-## Compatibility
-
-The script is developed and tested on Arch Linux, but it should work on other Linux distributions as well. If you encounter any issues, please open an issue on the repository.
-
-Status of platforms:
-
-- Linux :white_check_mark:
-- Steam Deck :white_check_mark:
-- Windows - WSL :white_check_mark:
-
-> The script works on WSL, but you need to specify the path to the Helldivers 2 mods directory manually, to find your Windows partition head to `/mnt/` and from there go to your Helldivers 2 data directory, on a typical install it should be on `/mnt/c/Program\ Files\ \(x86\)/Steam/steamapps/common/Helldivers\ 2/data`. You also need to have `unzip` installed, which can be done by running `sudo apt install unzip`. Nexus Mods integration is not supported on WSL.
 
 ## Contributing
 
