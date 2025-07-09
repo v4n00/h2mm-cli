@@ -330,8 +330,8 @@ Options:
 Example:
 	h2mm install mod.zip
 	h2mm install /path/to/mod/directory/
-	h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # mix and match hoewever you want
-	h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files
+	h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # mix and match however you want
+	h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n to specify name of the mod
 EOF
 }
 

@@ -54,11 +54,11 @@ To find out how to use a command, you can run `h2mm <COMMAND> --help`.
 ```bash
 h2mm install mod.zip
 h2mm install /path/to/mod/directory/
-h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # mix and match hoewever you want
-h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n is mandatory when using files
+h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # bulk install mods
+h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n to specify name of the mod
 ```
 
-> It's better to be in the directory where the mod files are located, so you don't have to specify the full path. For mod downloads, you can do `cd ~/Downloads` and then run the command.
+> It's better to be in the directory where the mod files are located, so you don't have to specify the full path everytime you're installing a mod. Open a terminal and type `cd ~/Downloads` (which will change the directory to your Downloads folder) and then run the install command with just the file names.
 >
 > Also, use the Tab key to autocomplete the file names, as it will help you escape special characters likes spaces or quotes.
 
@@ -73,7 +73,7 @@ h2mm list -v # verbose mode
 
 ```bash
 h2mm uninstall -n "Example mod"
-h2mm uninstall -i 3 # get the index from the list command
+h2mm uninstall -i 3 # by index (get the index from the list command)
 ```
 
 #### Enable/disable mods
