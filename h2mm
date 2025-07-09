@@ -1637,12 +1637,12 @@ function nexus_setup() {
 	parse_help_no_arguments display_help_nexus_setup "$@"
 	local nexus_api_key=""
 
-	log INFO "This is the setup wizard for the Nexus Mods integration."
+	log INFO "This is the setup wizard for the ${ORANGE}Nexus Mods${NC} integration."
 	log INFO "You need to provide your Nexus Mods API key to use this feature."
 	log INFO "You can find your API key in your Nexus Mods by:"
 	log INFO " -> Going to Site Preferences -> API Keys"
 	log INFO " -> Going to https://next.nexusmods.com/settings/api-keys"
-	log INFO "Scroll down and request/copy your API key."
+	log INFO "Scroll to the bottom of the page and request/copy your API key."
 	log INFO ""
 	log PROMPT "Enter your Nexus Mods API key: "
 	read -e nexus_api_key
@@ -1664,25 +1664,26 @@ function nexus_setup() {
 	# ask for default terminal
 	local terminal_command=""
 
-	log INFO "Now the manager needs to create a desktop entry for h2mm."
-	log INFO "In order to do that, it needs to know which terminal you are using."
-	log INFO "Here's a list of supported terminals:"
+	log INFO "Now the manager needs to create a ${ORANGE}desktop entry${NC} for h2mm."
+	log INFO "In order to do that, it needs to know which terminal to use."
+	log INFO "Here's a list of pre-configured supported terminals:"
 	log INFO " -> gnome-terminal (On GNOME systems like Ubuntu)"
 	log INFO " -> konsole (On KDE systems like SteamOS, Steam Deck's default)"
 	log INFO " -> alacritty"
 	log INFO " -> kitty"
 	log INFO ""
 	log INFO "If you are not using any of these terminals, you need to provide"
-	log INFO "the command to spawn your terminal along with the flags to run a command."
+	log INFO "the command to spawn your terminal along with the flags to run a command"
+	log INFO "and the placeholder <COMMAND> where the h2mm command will be executed."
 	log INFO "To test if the command is valid, the manager spawn a terminal."
 	log INFO "For example, if you are using ghostty you need to provide this:"
 	log INFO "ghostty -e <COMMAND>"
 	log INFO ""
-	log PROMPT "Enter your terminal (or terminal command): "
+	log PROMPT "Enter your terminal from the list (or custom terminal command): "
 	read -e terminal_command
 
 	[[ -z "$terminal_command" ]] && { log ERROR "Terminal command is required."; exit 1; }
-	command -v "$(echo "$terminal_command" | awk '{print $1}')" >/dev/null 2>&1 || { log ERROR "Terminal command does not work."; exit 1; }
+	command -v "$(echo "$terminal_command" | awk '{print $1}')" >/dev/null 2>&1 || { log ERROR "Terminal command does not work. Did you pick the correct terminal or do you have this terminal installed?"; exit 1; }
 
 	# check the 4 supported terminals
 	case "$terminal_command" in
@@ -1740,11 +1741,13 @@ MimeType=x-scheme-handler/nxm;"
 		xdg-mime default "$desktop_file" x-scheme-handler/nxm
 	fi
 
-	log INFO "You can now use the Nexus Mods integration!"
-	log INFO "To use it, go to a mod page and click on the \"Vortex\" button on the front page or \"Mod manager download\" button inside the mod files section."
-	log INFO "Your browser will ask you to open the link with h2mm."
-	log INFO "Not all mods have this button, it all depends the mod author."
-	log INFO "A system restart might be needed for the changes to take effect."
+	log INFO "You can now use the ${ORANGE}Nexus Mods${NC} integration!"
+	log INFO "To use it, go to a mod page and click on the \"Vortex\" button"
+	log INFO "or \"Mod manager download\" button inside the mod files section."
+	log INFO "Additional information:"
+	log INFO "-> Your browser will ask you to open the link with h2mm, select it."
+	log INFO "-> Not all mods have this button, it all depends the mod author."
+	log INFO "-> A system restart might be needed if you can't open the link with h2mm."
 }
 
 function nexus() {
