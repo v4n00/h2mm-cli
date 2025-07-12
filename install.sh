@@ -174,7 +174,7 @@ log INFO "Installing h2mm to ${ORANGE}$DESTINATION_PATH${NC}."
 
 # check if we need sudo based on destination path
 SUDO_CMD=""
-if [[ ! -w "$DESTINATION_PATH" ]]; then
+if [[ ! -w "$DESTINATION_PATH" || ( -f "$DESTINATION_PATH/h2mm" && ! -w "$DESTINATION_PATH/h2mm" ) ]]; then
     SUDO_CMD="sudo"
     log INFO "Destination path ${RED}requires${NC} elevated permissions, using sudo."
 fi
