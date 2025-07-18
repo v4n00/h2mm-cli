@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.4"
+VERSION="0.6.5"
 
 # --- Globals ---
 
@@ -306,7 +306,6 @@ Commands:
 	mo, modpack-overwrite				Overwrite a modpack.
 	mr, modpack-reset				Reset all installed modpacks.
 	ns, nexus-setup					Setup Nexus Mods integration.
-	nu, nexus-update				Start Nexus mods update process.
 	up, update					Update h2mm to the latest version.
 	rs, reset					Reset all installed mods.
 	help						Display this help message.
@@ -1944,6 +1943,7 @@ function main() {
 			self_update
 			;;
 		*)
+			log ERROR "Unknown command: $command"
 			$display_help
 			;;
 	esac
