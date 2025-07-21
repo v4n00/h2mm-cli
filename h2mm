@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.5"
+VERSION="0.6.6"
 
 # --- Globals ---
 
@@ -1798,7 +1798,7 @@ function nexus() {
 	log INFO ""
 
 	# get mod info
-	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$nexus_mod_id/files/$nexus_mod_file_id.json"
+	api_url="https://api.nexusmods.com/v1/games/helldivers2/mods/$nexus_mod_id.json"
 	response=$(curl -sSw " http:%{http_code}" -H "apikey: $api_key" "$api_url")
 	[[ $? -ne 0 ]] && { log ERROR "curl failed."; exit 1; }
 
@@ -1807,7 +1807,7 @@ function nexus() {
 	[[ "$status" != "200" ]] && { log ERROR "Invalid response from Nexus Mods API."; exit 1; }
 
 	# extract info
-	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+')
+	mod_name=$(echo "$response" | grep -oP '"name":"\K[^"]+' | head -n 1)
 	nexus_mod_version=$(echo "$response" | grep -oP '"version":"\K[^"]+')
 	[[ -z "$mod_name" || -z "$nexus_mod_version" ]] && { log ERROR "Could not extract mod name and version."; exit 1; }
 
