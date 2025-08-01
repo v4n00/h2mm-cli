@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-
-VERSION="0.6.6"
+VERSION="0.6.7"
 
 # --- Globals ---
 
@@ -1299,7 +1298,7 @@ function mod_order {
 	idxs=$(echo "$entries" | awk -F, -v pos="$DB_MOD_ID_POS" '{print $pos}' | tr ' ' '\n')
 
 	# step 5.3 - reverse sort the idxs if we are in descending order
-	[[ $ascending_order == false ]] && idxs=$(echo "$idxs" | sort -r)
+	[[ $ascending_order == false ]] && idxs=$(echo "$idxs" | sort -rV)
 
 	for idx in $idxs; do
 		# if ascending order, subtract 1 from the index, otherwise add 1
