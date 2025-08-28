@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-VERSION="0.6.7"
+
+VERSION="0.6.8"
 
 # --- Globals ---
 
@@ -590,6 +591,7 @@ function mod_enable() {
 
 	# move files to a temp directory that has the same name as the mod
 	temp_dir=$(mktemp -d)
+	trap 'rm -rf "$temp_dir"' EXIT
 	[[ ! -d "$temp_dir" ]] && { log ERROR "Could not create temporary directory."; exit 1; }
 
 	for file in $current_mod_files; do
@@ -797,12 +799,19 @@ function mod_install() {
 		fi
 
 		# mod_dir as a temporary directory
-		mod_dir+=$(mktemp -d)
+		temp_folder=$(mktemp -d)
+		trap 'rm -rf "$temp_folder"' EXIT
+		mod_dir+=("$temp_folder")
 		if [[ $is_not_zip == true ]]; then
 			unar -q "$mod_zip" -o "$mod_dir"
 		else
 			unzip -qq "$mod_zip" -d "$mod_dir"
 		fi
+	fi
+
+	if [[ $has_nexus_mod_arguments == true ]]; then
+		# overwrite trap in case of nexus mod
+		trap 'read -p "Press Enter to continue..."; rm -rf "$output_folder"; rm -rf "$temp_folder"' EXIT
 	fi
 
 	# if there's more than 1 directory, call recursively
@@ -1068,6 +1077,7 @@ function mod_export() {
 	if [[ $modpack_export == true || "$confirm" == "y" || "$confirm" == "Y" || "$confirm" = "" ]]; then
 		# create a temporary directory to store the mods
 		OUT_DIR=$(mktemp -d)
+		trap 'rm -rf "$OUT_DIR"' EXIT
 		MODS_EXPORT_DIR="$OUT_DIR/Helldivers 2 Mods"
 		mkdir -p "$MODS_EXPORT_DIR"
 		cp "$DB_FILE" "$MODS_EXPORT_DIR"
@@ -1109,6 +1119,7 @@ function mod_import() {
 
 	# extract in temp directory
 	OUT_DIR=$(mktemp -d)
+	trap 'rm -rf "$OUT_DIR"' EXIT
 	tar -xzf "$1" -C "$OUT_DIR"
 	[[ $? -ne 0 ]] && { log ERROR "Could not import mods. Possibly because the archive is invalid."; exit 1; }
 
@@ -1451,6 +1462,7 @@ function modpack_create() {
 		# overwrite all paths to create a custom directory that will hold the mods specified, the mods will be "installed" there
 		OLD_MODS_DIR="$MODS_DIR"
 		MODS_DIR="$(mktemp -d)"
+		trap 'rm -rf "$MODS_DIR"' EXIT
 		DB_FILE="$MODS_DIR/mods.csv"
 		echo "$(get_version_major)" > "$DB_FILE"
 
@@ -1786,7 +1798,9 @@ function nexus() {
 
 	# extract file name
 	file_name=$(echo "$download_url" | awk -F/ '{print $6}' | cut -d\? -f1)
-	output_file="$(mktemp -d)/$file_name"
+	output_folder="$(mktemp -d)"
+	trap 'read -p "Press Enter to continue..."; rm -rf "$output_folder"' EXIT
+	output_file="$output_folder/$file_name"
 
 	# download the file
 	log INFO "Download progress:"
@@ -1831,7 +1845,6 @@ function nexus() {
 		[[ $mod_index -ne $new_mod_index ]] && mod_order -i "$new_mod_index" "$mod_index"
 
 		log INFO "Mod ${GREEN}successfully${NC} updated: $mod_name."
-
 	fi
 
 	disable_all_modpacks
