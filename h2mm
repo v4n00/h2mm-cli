@@ -155,6 +155,81 @@ function remove_disabled_prefix() {
 	echo "$disabled_file"
 }
 
+function parse_indexes() {
+	_returned_indexes=()
+
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		"--range")
+			[[ -z "$2" ]] && { log ERROR "Function parse indexes: range is required"; exit 1; }
+			range="$2"; shift 2
+			;;
+		*)
+			input_indexes+=("$1")
+			shift
+			;;
+		esac
+	done
+
+	# parse input_indexes 1-by-1
+	for index in "${input_indexes[@]}"; do
+		# normal index 5
+		if [[ "$index" =~ ^[0-9]+$ ]]; then
+			[[ $index -lt 1 || $index -gt $range ]] && { log ERROR "Function parse indexes: index $index out of range (1 -> $range)"; exit 1; }
+			_returned_indexes+=("$index")
+		# range index 1..5
+		elif [[ "$index" =~ ^[0-9]+\.\.[0-9]+$ ]]; then
+			# cut doesn't work with a delimiter of two characters
+			start=$(echo "$index" | cut -d. -f1)
+			end=$(echo "$index" | cut -d. -f3)
+
+			[[ $start -lt 1 || $end -lt 1 || $start -gt $range || $end -gt $range ]] && { log ERROR "Function parse indexes: range $index out of range (1 -> $range)"; exit 1; }
+
+			if [[ $start -le $end ]]; then
+				for ((i=start; i<=end; i++)); do
+					_returned_indexes+=("$i")
+				done
+			else
+				for ((i=start; i>=end; i--)); do
+					_returned_indexes+=("$i")
+				done
+			fi
+		# remove index -5
+		elif [[ "$index" =~ ^-[0-9] ]]; then
+			index=${index#-} # remove the - sign
+
+			# if _returned_indexes is empty, populate it with every number from 1 to range
+			[[ ${#_returned_indexes[@]} -eq 0 ]] && for ((i=1; i<=range; i++)); do _returned_indexes+=("$i"); done
+
+			# if exclusion range
+			if [[ "$index" =~ ^[0-9]+\.\.[0-9]+$ ]]; then
+				start=$(echo "$index" | cut -d. -f1)
+				end=$(echo "$index" | cut -d. -f3)
+
+				[[ $start -lt 1 || $end -lt 1 || $start -gt $range || $end -gt $range ]] && { log ERROR "Function parse indexes: exclusion range $index out of range (1 -> $range)"; exit 1; }
+
+				if [[ $start -le $end ]]; then
+					for ((i=start; i<=end; i++)); do
+						_returned_indexes=("${_returned_indexes[@]/$i}") # remove index from array
+					done
+				else
+					for ((i=start; i>=end; i--)); do
+						_returned_indexes=("${_returned_indexes[@]/$i}") # remove index from array
+					done
+				fi
+			else
+				# single exclusion
+				[[ $index -lt 1 || $index -gt $range ]] && { log ERROR "Function parse indexes: index $index out of range (1 -> $range)"; exit 1; }
+
+				_returned_indexes=("${_returned_indexes[@]/$index}") # remove index from array
+			fi
+		else
+			log ERROR "Function parse indexes: invalid index $index"
+			exit 1
+		fi
+	done
+}
+
 function get_mod_name_and_index() {
 	# if calling install multiple times in the same call of h2mm, the mod_index needs to be reset if it was -1
 	[[ $mod_index -eq -1 ]] && unset mod_index
@@ -853,7 +928,7 @@ function mod_install() {
 		done
 
 		if [[ ${#filtered_dirs[@]} -ne 0 ]]; then
-			log INFO "Multiple mod variants found for mod ${mod_name}."
+			log INFO "Multiple mod variants found for mod ${mod_name}:"
 
 			# print the variant name by display all the directories (and how they're nested)
 			# first, take the basename of the directory/zip we're installing from
@@ -878,19 +953,24 @@ function mod_install() {
 			done
 
 			# prompt user to choose
-			log PROMPT "Enter the number of the variant(s) to install (separated by space) or press Enter to install all: "
+			log INFO "Use spaces to separate multiple variants (1 2 4) or use ranges (2..5) or use exclusions (-3) or any combination of them (1 3..5 7..12 -10)."
+			log INFO "When only exclusions are present (-3) it means all variants except the excluded ones. You can also use exclusion ranges (-3..5)."
+			log PROMPT "Enter the combination of variants to install (or press Enter to install all variants): "
 			read -a variant_indices
 			if [[ -n "${variant_indices[0]}" ]]; then
 				# clear mod_files
 				mod_files=()
 
+				# use this variable for formatting the mod name
 				has_atleast_one_variant=false
 
-				# get the files from the chosen variant
-				for index in "${variant_indices[@]}"; do
-					[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid variant index."; exit 1; }
-					[[ $index -lt 1 || $index -gt ${#filtered_dirs[@]} ]] && { log ERROR "Variant index out of range."; exit 1; }
+				parse_indexes --range ${#filtered_dirs[@]} "${variant_indices[@]}"
 
+				# get the files from the chosen variant
+				for index in "${_returned_indexes[@]}"; do
+					[[ -z "$index" ]] && continue
+
+					# read the files from the directory
 					readarray -d '' variant_files < <(find "${filtered_dirs[$((index - 1))]}" -maxdepth 1 -type f -name "*.patch_*" -print0)
 
 					# update mod_name to contain the variant name
