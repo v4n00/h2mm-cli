@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.9"
+VERSION="0.6.10"
 
 # --- Globals ---
 
@@ -822,30 +822,37 @@ function mod_install() {
 
 	# directory containing mod files
 	if [[ -n "$mod_dir" ]]; then
+		# remove trailing slash if it exists
+		mod_dir="${mod_dir%/}"
+
 		# verify directory exists
 		[[ ! -d "$mod_dir" ]] && { log ERROR "Directory $mod_dir does not exist."; exit 1; }
 
-		# read every file from the directory
-		readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
 		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
 		if [[ -z "$mod_name" ]]; then
 			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
 		fi
 
 		# check for mod variants and handle
+		# if it's a tmp directory in the format /tmp/tmp.*/, we need to go mindepth 1 to avoid listing the tmp dir itself
+		[[ "$mod_dir" == /tmp/tmp.* ]] && mindepth=1 || mindepth=0
+
 		# if the mod directory contains more than 1 directory, it means there are multiple variants for the mod
 		# prompt the user to choose which variant to install, or install multiple
-		readarray -d '' all_dirs < <(find "$mod_dir" -mindepth 1 -type d -print0)
+		readarray -d '' all_dirs < <(find "$mod_dir" -mindepth $mindepth -type d -print0)
 
 		# filter so that we only have dirs that have *.patch_* files inside them
 		filtered_dirs=()
 		for dir in "${all_dirs[@]}"; do
-			if find "$dir" -maxdepth 1 -type f -name "*.patch_*" -print -quit | grep -q .; then
+			if find "$dir" -type f -name "*.patch_*" -print -quit | grep -q .; then
 				filtered_dirs+=("$dir")
 			fi
 		done
 
-		if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
+		if [[ ${#filtered_dirs[@]} -eq 0 ]]; then
+			# read every file from the directory, the mod has no variants
+			readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
+		else
 			log INFO "Multiple mod variants found for mod ${mod_name}."
 
 			# print the variant name by display all the directories (and how they're nested)
@@ -853,15 +860,21 @@ function mod_install() {
 			# then, make the variant name by removing the tmp dir name from the path (if it's a zip)
 			# finally, take out this name, if it exists
 
-			if [[ -n "$mod_zip" ]]; then
-				mod_file_name="$(get_basename "$mod_zip")"
-			else
-				mod_file_name="*"
-			fi
-
 			for i in "${!filtered_dirs[@]}"; do
-				variant_name="${filtered_dirs[$i]#$mod_dir/}" # remote temp name in case its a zip
-				log INFO "$((i + 1)). ${variant_name#$mod_file_name/}" # remote the name of the zip/dir if it exists
+				variant_name="${filtered_dirs[$i]}"
+
+				# if mod_dir contains /tmp/tmp.*/* then remove the /tmp/tmp.*/ part and leave the rest, else just remove the mod_dir part
+				if [[ "$mod_dir" == /tmp/tmp.* ]]; then
+					variant_name="${variant_name#$mod_dir/*/}" # remove /tmp/tmp.* part
+
+					[[ $i == 0 && "$variant_name" == /tmp/tmp.* ]] && variant_name="$mod_name [base folder]"
+				else
+					variant_name="${variant_name#$mod_dir/}" # remove dir name before it
+
+					[[ $i == 0 && "$variant_name" == "$mod_dir" ]] && variant_name="$mod_name [base folder]"
+				fi
+
+				log INFO "$((i + 1)). $variant_name"
 			done
 
 			# prompt user to choose
@@ -876,7 +889,7 @@ function mod_install() {
 					[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid variant index."; exit 1; }
 					[[ $index -lt 1 || $index -gt ${#filtered_dirs[@]} ]] && { log ERROR "Variant index out of range."; exit 1; }
 
-					readarray -d '' variant_files < <(find "${filtered_dirs[$((index - 1))]}" -type f -name "*.patch_*" -print0)
+					readarray -d '' variant_files < <(find "${filtered_dirs[$((index - 1))]}" -maxdepth 1 -type f -name "*.patch_*" -print0)
 
 					# update mod_name to contain the variant name
 					mod_name="${mod_name} [$(basename "${filtered_dirs[$((index - 1))]}")]"
