@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.14"
+VERSION="0.6.15"
 
 # --- Globals ---
 
@@ -933,7 +933,7 @@ function mod_install() {
 			fi
 		done
 
-		if [[ ${#filtered_dirs[@]} -ne 0 ]]; then
+		if [[ ${#filtered_dirs[@]} -gt 1 ]]; then
 			log INFO "Multiple mod variants found for mod ${mod_name}:"
 
 			# print the variant name by display all the directories (and how they're nested)
@@ -1916,7 +1916,7 @@ function nexus() {
 	log INFO ""
 
 	# extract file name
-	file_name=$(echo "$download_url" | awk -F/ '{print $6}' | cut -d\? -f1)
+	file_name=$(echo "$download_url" | awk -F/ '{print $6}' | cut -d\? -f1 | sed 's/%20/ /g')
 	output_folder="$(mktemp -d)"
 	trap 'read -p "Press Enter to continue..."; rm -rf "$output_folder"' EXIT
 	output_file="$output_folder/$file_name"
