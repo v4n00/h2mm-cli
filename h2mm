@@ -828,6 +828,9 @@ function mod_install() {
 		# verify directory exists
 		[[ ! -d "$mod_dir" ]] && { log ERROR "Directory $mod_dir does not exist."; exit 1; }
 
+		# read every file from the directory
+		readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
+
 		# if the name is not specified, use the name of the directory, last sed for making nexusmods names not have numbers
 		if [[ -z "$mod_name" ]]; then
 			mod_name=$(echo "$mod_dir" | sed 's:/*$::' | awk -F/ '{print $NF}' | sed -E 's/-[0-9]+-.*//')
@@ -849,10 +852,7 @@ function mod_install() {
 			fi
 		done
 
-		if [[ ${#filtered_dirs[@]} -eq 0 ]]; then
-			# read every file from the directory, the mod has no variants
-			readarray -d '' mod_files < <(find "$mod_dir" -type f -name "*.patch_*" -print0)
-		else
+		if [[ ${#filtered_dirs[@]} -ne 0 ]]; then
 			log INFO "Multiple mod variants found for mod ${mod_name}."
 
 			# print the variant name by display all the directories (and how they're nested)
@@ -884,6 +884,8 @@ function mod_install() {
 				# clear mod_files
 				mod_files=()
 
+				has_atleast_one_variant=false
+
 				# get the files from the chosen variant
 				for index in "${variant_indices[@]}"; do
 					[[ ! "$index" =~ ^[0-9]+$ ]] && { log ERROR "Invalid variant index."; exit 1; }
@@ -892,11 +894,18 @@ function mod_install() {
 					readarray -d '' variant_files < <(find "${filtered_dirs[$((index - 1))]}" -maxdepth 1 -type f -name "*.patch_*" -print0)
 
 					# update mod_name to contain the variant name
-					mod_name="${mod_name} [$(basename "${filtered_dirs[$((index - 1))]}")]"
+					if [[ $has_atleast_one_variant == false ]]; then
+						mod_name="${mod_name} [$(basename "${filtered_dirs[$((index - 1))]}")"
+						has_atleast_one_variant=true
+					else
+						mod_name="${mod_name} - $(basename "${filtered_dirs[$((index - 1))]}")"
+					fi
 
 					# add the files to the mod_files array
 					mod_files+=("${variant_files[@]}")
 				done
+
+				[[ $has_atleast_one_variant == true ]] && mod_name="${mod_name}]"
 			fi
 		fi
 	fi
