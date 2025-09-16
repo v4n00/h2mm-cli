@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.11"
+VERSION="0.6.12"
 
 # --- Globals ---
 
@@ -922,8 +922,9 @@ function mod_install() {
 		# filter so that we only have dirs that have *.patch_* files inside them
 		filtered_dirs=()
 		for dir in "${all_dirs[@]}"; do
-			if find "$dir" -type f -name "*.patch_*" -print -quit | grep -q .; then
+			if find "$dir" -maxdepth 1 -type f -name "*.patch_*" -print -quit | grep -q .; then
 				filtered_dirs+=("$dir")
+				log INFO "Filtered dir: $dir"
 			fi
 		done
 
