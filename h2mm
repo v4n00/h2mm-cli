@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.10"
+VERSION="0.6.11"
 
 # --- Globals ---
 
@@ -210,18 +210,18 @@ function parse_indexes() {
 
 				if [[ $start -le $end ]]; then
 					for ((i=start; i<=end; i++)); do
-						_returned_indexes=("${_returned_indexes[@]/$i}") # remove index from array
+						_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
 					done
 				else
 					for ((i=start; i>=end; i--)); do
-						_returned_indexes=("${_returned_indexes[@]/$i}") # remove index from array
+						_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
 					done
 				fi
 			else
 				# single exclusion
 				[[ $index -lt 1 || $index -gt $range ]] && { log ERROR "Function parse indexes: index $index out of range (1 -> $range)"; exit 1; }
 
-				_returned_indexes=("${_returned_indexes[@]/$index}") # remove index from array
+				_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
 			fi
 		else
 			log ERROR "Function parse indexes: invalid index $index"
@@ -937,16 +937,23 @@ function mod_install() {
 
 			for i in "${!filtered_dirs[@]}"; do
 				variant_name="${filtered_dirs[$i]}"
+				declare -A variants
 
 				# if mod_dir contains /tmp/tmp.*/* then remove the /tmp/tmp.*/ part and leave the rest, else just remove the mod_dir part
 				if [[ "$mod_dir" == /tmp/tmp.* ]]; then
 					variant_name="${variant_name#$mod_dir/*/}" # remove /tmp/tmp.* part
 
-					[[ $i == 0 && "$variant_name" == /tmp/tmp.* ]] && variant_name="$mod_name [base folder]"
+					[[ $i -eq 0 && "$variant_name" == /tmp/tmp.* ]] && variant_name="$mod_name [base folder]"
 				else
 					variant_name="${variant_name#$mod_dir/}" # remove dir name before it
 
-					[[ $i == 0 && "$variant_name" == "$mod_dir" ]] && variant_name="$mod_name [base folder]"
+					[[ $i -eq 0 && "$variant_name" == "$mod_dir" ]] && variant_name="$mod_name [base folder]"
+				fi
+
+				if [[ $i -ne 0 ]]; then
+					variants[$i]="$variant_name"
+				else
+					variants[0]="base"
 				fi
 
 				log INFO "$((i + 1)). $variant_name"
@@ -975,10 +982,10 @@ function mod_install() {
 
 					# update mod_name to contain the variant name
 					if [[ $has_atleast_one_variant == false ]]; then
-						mod_name="${mod_name} [$(basename "${filtered_dirs[$((index - 1))]}")"
+						mod_name="${mod_name} [${variants[$((index - 1))]}"
 						has_atleast_one_variant=true
 					else
-						mod_name="${mod_name} - $(basename "${filtered_dirs[$((index - 1))]}")"
+						mod_name="${mod_name} - ${variants[$((index - 1))]}"
 					fi
 
 					# add the files to the mod_files array
