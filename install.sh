@@ -61,22 +61,29 @@ if [[ -x "$(command -v h2mm)" ]]; then
     fi
 fi
 
-# if steam deck, set destination path to ~/.local/bin
-log PROMPT "Are you installing on a Steam Deck? (y/N): "
-IFS= read -e response_sd
+# if steam os, set destination path to ~/.local/bin
+steamos=false
 
-if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
-    # steam deck
+if [[ -f "/etc/os-release" ]]; then
+	if grep -q "ID=steamos" /etc/os-release; then
+		steamos=true
+	fi
+fi
+
+if [[ $steamos == true ]]; then
+    # steam os
     DESTINATION_PATH="$HOME/.local/bin"
+    log INFO "Detected SteamOS, setting installation path to ${ORANGE}$DESTINATION_PATH${NC}."
+
     mkdir -p "$DESTINATION_PATH"
 
     # check if ~/.local/bin is in PATH
     if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
         # add ~/.local/bin to PATH
-        log INFO "Installing the script on a Steam Deck means adding $DESTINATION_PATH to your \$PATH."
+        log INFO "Installing the script on SteamOS means adding ${ORANGE}$DESTINATION_PATH${NC} to your \$PATH."
         log INFO "If you're using a different shell than bash (the default), you may need to add it manually."
 
-		log PROMPT "Do you want to add $DESTINATION_PATH to your \$PATH in ~/.bashrc? (Y/n): "
+		log PROMPT "Do you want to automatically add ${ORANGE}$DESTINATION_PATH${NC} to your \$PATH in ~/.bashrc? (Y/n): "
         IFS= read -e response
         if [[ "$response" == "y" || "$response" = "Y" || -z "$response" ]]; then
             echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.bashrc"
@@ -85,11 +92,11 @@ if [[ "$response_sd" == "y" || "$response_sd" == "Y" ]]; then
 			source "$HOME/.bashrc"
 			export PATH="$HOME/.local/bin:$PATH" # fallback kinda in case sourcing fails
 
-            log INFO "Added $DESTINATION_PATH to your \$PATH in ~/.bashrc."
+            log INFO "Added ${ORANGE}$DESTINATION_PATH${NC} to your \$PATH in ~/.bashrc."
         fi
     fi
 else
-    # not steam deck
+    # not steam os
     # set another path if needed
 	log PROMPT "Install the script to ${ORANGE}$DESTINATION_PATH${NC} or specify another path (must be included in \$PATH)? (Y/path): "
     IFS= read -e response
