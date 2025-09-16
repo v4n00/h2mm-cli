@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.12"
+VERSION="0.6.13"
 
 # --- Globals ---
 
@@ -194,40 +194,46 @@ function parse_indexes() {
 					_returned_indexes+=("$i")
 				done
 			fi
-		# remove index -5
-		elif [[ "$index" =~ ^-[0-9] ]]; then
+		# exclude index -5
+		elif [[ "$index" =~ ^-[0-9]+$ ]]; then
 			index=${index#-} # remove the - sign
 
 			# if _returned_indexes is empty, populate it with every number from 1 to range
 			[[ ${#_returned_indexes[@]} -eq 0 ]] && for ((i=1; i<=range; i++)); do _returned_indexes+=("$i"); done
 
-			# if exclusion range
-			if [[ "$index" =~ ^[0-9]+\.\.[0-9]+$ ]]; then
-				start=$(echo "$index" | cut -d. -f1)
-				end=$(echo "$index" | cut -d. -f3)
+			[[ $index -lt 1 || $index -gt $range ]] && { log ERROR "Function parse indexes: index $index out of range (1 -> $range)"; exit 1; }
 
-				[[ $start -lt 1 || $end -lt 1 || $start -gt $range || $end -gt $range ]] && { log ERROR "Function parse indexes: exclusion range $index out of range (1 -> $range)"; exit 1; }
+			_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
 
-				if [[ $start -le $end ]]; then
-					for ((i=start; i<=end; i++)); do
-						_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
-					done
-				else
-					for ((i=start; i>=end; i--)); do
-						_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
-					done
-				fi
+		# exclusion range -3..5
+		elif [[ "$index" =~ ^-[0-9]+\.\.[0-9]+$ ]]; then
+			index=${index#-} # remove the - sign
+
+			# if _returned_indexes is empty, populate it with every number from 1 to range
+			[[ ${#_returned_indexes[@]} -eq 0 ]] && for ((i=1; i<=range; i++)); do _returned_indexes+=("$i"); done
+
+			start=$(echo "$index" | cut -d. -f1)
+			end=$(echo "$index" | cut -d. -f3)
+
+			[[ $start -lt 1 || $end -lt 1 || $start -gt $range || $end -gt $range ]] && { log ERROR "Function parse indexes: exclusion range $index out of range (1 -> $range)"; exit 1; }
+
+			if [[ $start -le $end ]]; then
+				for ((i=start; i<=end; i++)); do
+					_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$i"))
+					log INFO i
+				done
 			else
-				# single exclusion
-				[[ $index -lt 1 || $index -gt $range ]] && { log ERROR "Function parse indexes: index $index out of range (1 -> $range)"; exit 1; }
-
-				_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$index"))
+				for ((i=start; i>=end; i--)); do
+					_returned_indexes=($(printf "%s\n" "${_returned_indexes[@]}" | grep -vx "$i"))
+				done
 			fi
 		else
 			log ERROR "Function parse indexes: invalid index $index"
 			exit 1
 		fi
 	done
+
+	log INFO "Parsed indexes: ${_returned_indexes[*]}"
 }
 
 function get_mod_name_and_index() {
@@ -951,10 +957,10 @@ function mod_install() {
 					[[ $i -eq 0 && "$variant_name" == "$mod_dir" ]] && variant_name="$mod_name [base folder]"
 				fi
 
-				if [[ $i -ne 0 ]]; then
-					variants[$i]="$variant_name"
-				else
+				if [[ $i -eq 0 && "$variant_name" == "$mod_dir" ]]; then
 					variants[0]="base"
+				else
+					variants[$i]="$variant_name"
 				fi
 
 				log INFO "$((i + 1)). $variant_name"
