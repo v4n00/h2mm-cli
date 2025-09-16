@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-VERSION="0.6.13"
+VERSION="0.6.14"
 
 # --- Globals ---
 
@@ -941,22 +941,25 @@ function mod_install() {
 			# then, make the variant name by removing the tmp dir name from the path (if it's a zip)
 			# finally, take out this name, if it exists
 
+			# test if directory has only 1 directory inside it, common for zips, so we want to remove that from each variant name
+			test_zip_dir=$(find "$mod_dir" -mindepth 1 -maxdepth 1 -type d)
+			contains_zip_dir=false
+			if [[ $(echo "$test_zip_dir" | wc -l) -eq 1 ]]; then
+				contains_zip_dir=true
+				test_zip_dir="${test_zip_dir#$mod_dir/}"
+			fi
+
 			for i in "${!filtered_dirs[@]}"; do
 				variant_name="${filtered_dirs[$i]}"
 				declare -A variants
 
 				# if mod_dir contains /tmp/tmp.*/* then remove the /tmp/tmp.*/ part and leave the rest, else just remove the mod_dir part
-				if [[ "$mod_dir" == /tmp/tmp.* ]]; then
-					variant_name="${variant_name#$mod_dir/*/}" # remove /tmp/tmp.* part
+				variant_name="${variant_name#$mod_dir/}"
 
-					[[ $i -eq 0 && "$variant_name" == /tmp/tmp.* ]] && variant_name="$mod_name [base folder]"
-				else
-					variant_name="${variant_name#$mod_dir/}" # remove dir name before it
+				[[ $contains_zip_dir == true ]] && variant_name="${variant_name#*/}"
 
-					[[ $i -eq 0 && "$variant_name" == "$mod_dir" ]] && variant_name="$mod_name [base folder]"
-				fi
-
-				if [[ $i -eq 0 && "$variant_name" == "$mod_dir" ]]; then
+				if [[ "$variant_name" == "$test_zip_dir" ]]; then
+					variant_name="${variant_name} [base folder]"
 					variants[0]="base"
 				else
 					variants[$i]="$variant_name"
@@ -966,6 +969,7 @@ function mod_install() {
 			done
 
 			# prompt user to choose
+			log INFO ""
 			log INFO "Use spaces to separate multiple variants (1 2 4) or use ranges (2..5) or use exclusions (-3) or any combination of them (1 3..5 7..12 -10)."
 			log INFO "When only exclusions are present (-3) it means all variants except the excluded ones. You can also use exclusion ranges (-3..5)."
 			log PROMPT "Enter the combination of variants to install (or press Enter to install all variants): "
