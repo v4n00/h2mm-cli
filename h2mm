@@ -432,8 +432,7 @@ function display_help_install() {
     h e "  Install one or more mods from files, directories, or archives."
     h e "  Supports .zip, .rar, and .7z archives (requires 'unzip' or 'unar')."
     h e "  It is recommended to be in the directory where mod archives are, or to use absolute paths."
-    h e "  If you don't know how this works, use 'cd ~/Downloads' to go to the Downloads folder,"
-    h e "  and then run 'ls -la' to find the files you want to install."
+    h e "  Use 'cd ~/Downloads' to go to the Downloads folder, and run 'ls -la' to find the archives to install."
     h e "  Use the Tab key to auto-complete file and folder names, this helps escape spaces and special characters."
     h n
     h e "Options:"
