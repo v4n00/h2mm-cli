@@ -17,84 +17,34 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/head
 
 ## Usage
 
-The script gets added to `/usr/local/bin/h2mm` (or `$HOME/.local/bin` on Steam Deck) and can be used by running `h2mm` in your shell, which will show the help message explaining how to use the script.
+The script gets added to `/usr/local/bin/h2mm` (or `$HOME/.local/bin` on Steam Deck) and can be used by running `h2mm` in your shell, which will print the help message along with all available commands.
 
 ```bash
-h2mm
+h2mm --help
 ```
 
-### Available commands
+To find out how to use a command, you can run `h2mm COMMAND --help`. This is the most up-to-date source of information about the commands.
 
-- `install` or `i` - Install a mod by the file provided (directory, zip, patch)
-- `uninstall` or `u` - Uninstall a mod
-- `list` or `l` - List all installed mods
-- `enable` or `e` - Enable a mod
-- `disable` or `d` - Disable a mod
-- `rename` or `r` - Rename a mod
-- `order` or `o` - Change load order for a mod
-- `export` or `ex` - Export installed mods to a zip file
-- `import` or `im` - Import mods from a zip file
-- `m` or `modpack` - Manage modpacks (collections of mods)
-- `nexus-setup` or `ns` - Setup Nexus Mods integration
-- `update` or `up` - Update h2mm to latest version
-- `reset` or `rs` - Reset all installed mods
-- `help` or `h` - Display this help message
-
-### Examples
-
-To find out how to use a command, you can run `h2mm <COMMAND> --help`.
-
-#### Install mod(s)
+## Examples
 
 ```bash
-h2mm install mod.zip
-h2mm install /path/to/mod/directory/
-h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # bulk install mods
-h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n to specify name of the mod
-```
-
-> It's better to be in the directory where the mod files are located, so you don't have to specify the full path everytime you're installing a mod. Open a terminal and type `cd ~/Downloads` (which will change the directory to your Downloads folder) and then run the install command with just the file names.
->
-> Also, use the Tab key to autocomplete the file names, as it will help you escape special characters likes spaces or quotes.
-
-#### List installed mods
-
-```bash
+h2mm install --help
+h2mm install ~/Downloads/mod.zip
+h2mm install ~/Downloads/mod\ files/
+h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n "Example mod"
 h2mm list
-h2mm list -v # verbose mode
+h2mm uninstall --index 3
+h2mm modpack create "Example modpack"
+h2mm modpack switch "Example modpack"
 ```
 
-#### Uninstall a mod
-
-```bash
-h2mm uninstall -n "Example mod"
-h2mm uninstall -i 3 # by index (get the index from the list command)
-```
-
-#### Enable/disable mods
-
-```bash
-h2mm enable -n "Example mod"
-h2mm enable -i 3
-h2mm disable -n "Example mod"
-h2mm disable -i 3
-```
-
-#### Updating the script
-
-```bash
-h2mm update
-```
+> When installing, it is recommended to be in the directory where mod archives are, or to use absolute paths. If you don't know how this works, use `cd ~/Downloads` to go to the Downloads folder, and then run `ls -la` to find the files you want to install. Use the Tab key to auto-complete file and folder names, this helps escape spaces and special characters.
+>
+> The `--index` flag can be used with commands that require a mod name, to use the mod index instead. You can find the mod index by running `h2mm list`.
 
 ## Nexus Mods integration
 
-Nexus Mods integration allows you to use the 1-click install feature of Nexus Mods (with the "Vortex" or "Mod manager download" buttons). You can set up Nexus Mods integration by running the following command:
-
-```bash
-h2mm nexus-setup
-```
-
-You will be walked through the setup process, which will ask you for your Nexus Mods API key and your preferred terminal.
+Nexus Mods integration allows you to use the 1-click install feature of Nexus Mods (with the "Vortex" or "Mod manager download" buttons). You can set up Nexus Mods integration by running `h2mm nexus-setup`. You will be walked through the setup process, which will ask you for your Nexus Mods API key and your preferred terminal.
 
 ## Contributing
 

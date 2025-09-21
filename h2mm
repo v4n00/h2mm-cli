@@ -417,7 +417,7 @@ function display_help_main() {
 	h e "  h2mm install --help"
 	h e "  h2mm install ~/Downloads/mod.zip"
 	h e "  h2mm install ~/Downloads/mod\ files/"
-	h e "  h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n \"mod\""
+	h e "  h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n \"Example mod\""
 	h e "  h2mm list"
 	h e "  h2mm uninstall -i 3"
 	h e "  h2mm modpack create \"Example modpack\""
@@ -431,18 +431,18 @@ function display_help_install() {
     h e "Description:"
     h e "  Install one or more mods from files, directories, or archives."
     h e "  Supports .zip, .rar, and .7z archives (requires 'unzip' or 'unar')."
-    h e "  It it recommended to be in the directory where the files are, or use absolute paths."
+    h e "  It is recommended to be in the directory where mod archives are, or to use absolute paths."
     h e "  If you don't know how this works, use 'cd ~/Downloads' to go to the Downloads folder,"
     h e "  and then run 'ls -la' to find the files you want to install."
-    h e "  Use the Tab key to auto-complete file names, this helps escape spaces and special characters."
+    h e "  Use the Tab key to auto-complete file and folder names, this helps escape spaces and special characters."
     h n
     h e "Options:"
-    h c "-n <NAME>"      "Specify a custom mod name (defaults to archive/folder name)"
+    h c "-n <NAME>" "Specify a custom mod name (defaults to archive/folder name)"
     h n
     h e "Examples:"
     h e "  h2mm install ~/Downloads/mod.zip"
 	h e "  h2mm install ~/Downloads/mod\ files/"
-	h e "  h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n \"mod\""
+	h e "  h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n \"Example mod\""
 }
 
 function display_help_uninstall() {
@@ -476,7 +476,7 @@ function display_help_enable() {
     h n
     h e "Examples:"
     h e "  h2mm enable -i 3"
-    h e "  h2mm enable -n \"Example Mod\""
+    h e "  h2mm enable -n \"Example mod\""
 }
 
 function display_help_disable() {
@@ -493,7 +493,7 @@ function display_help_disable() {
     h n
     h e "Examples:"
     h e "  h2mm disable -i 3"
-    h e "  h2mm disable -n \"Example Mod\""
+    h e "  h2mm disable -n \"Example mod\""
 }
 
 function display_help_list() {
@@ -561,7 +561,7 @@ function display_help_order() {
     h n
     h e "Examples:"
     h e "  h2mm order -i 3 1"
-    h e "  h2mm order -n \"Example Mod\" 2"
+    h e "  h2mm order -n \"Example mod\" 2"
 }
 
 function display_help_rename() {
@@ -579,8 +579,8 @@ function display_help_rename() {
     h c "<NEW_NAME>" "The new name for the mod"
     h n
     h e "Examples:"
-    h e "  h2mm rename -i 3 \"New Mod Name\""
-    h e "  h2mm rename -n \"Old Mod Name\" \"New Mod Name\""
+    h e "  h2mm rename -i 3 \"New mod name\""
+    h e "  h2mm rename -n \"Old mod name\" \"New mod name\""
 }
 
 function display_help_modpack() {
@@ -601,8 +601,8 @@ function display_help_modpack() {
     h n
     h e "Examples:"
     h e "  h2mm modpack list"
-    h e "  h2mm modpack create \"Example Modpack\""
-    h e "  h2mm modpack switch -n \"Example Modpack\""
+    h e "  h2mm modpack create \"Example modpack\""
+    h e "  h2mm modpack switch -n \"Example modpack\""
 }
 
 function display_help_modpack_list() {
@@ -628,7 +628,7 @@ function display_help_modpack_create() {
     h c "-n <MODPACK_NAME>" "Name of the modpack to create (required)"
     h n
     h e "Examples:"
-    h e "  h2mm modpack create -n \"Example Modpack\""
+    h e "  h2mm modpack create -n \"Example modpack\""
 }
 
 function display_help_modpack_switch() {
@@ -644,7 +644,7 @@ function display_help_modpack_switch() {
     h n
     h e "Examples:"
     h e "  h2mm modpack switch -i 2"
-    h e "  h2mm modpack switch -n \"Example Modpack\""
+    h e "  h2mm modpack switch -n \"Example modpack\""
 }
 
 function display_help_modpack_reset() {
@@ -668,7 +668,7 @@ function display_help_modpack_delete() {
     h n
     h e "Examples:"
     h e "  h2mm modpack delete -i 2"
-    h e "  h2mm modpack delete -n \"Example Modpack\""
+    h e "  h2mm modpack delete -n \"Example modpack\""
 }
 
 function display_help_modpack_overwrite() {
@@ -683,7 +683,7 @@ function display_help_modpack_overwrite() {
 	h c "-i, --index <MODPACK_INDEX>" "Index of the modpack to overwrite"
 	h n
 	h e "Examples:"
-	h e "  h2mm modpack overwrite -n \"Example Modpack\""
+	h e "  h2mm modpack overwrite -n \"Example modpack\""
 	h e "  h2mm modpack overwrite -i 2"
 }
 
