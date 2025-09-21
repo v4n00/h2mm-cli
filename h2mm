@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
+# Helldivers 2 Mod Manager (h2mm) - A command-line mod manager for Helldivers 2
 
-
-VERSION="0.6.15"
+VERSION="0.6.16"
 
 # --- Globals ---
 
@@ -371,26 +371,21 @@ function display_help_main() {
 Helldivers 2 Mod Manager v${VERSION}
 Usage: h2mm [OPTION] COMMAND
 Commands:
-	i, install					Install a mod by the file provided (directory, zip, patch).
-	u, uninstall					Uninstall a mod.
-	l, list						List all installed mods.
-	e, enable					Enable a mod.
-	d, disable					Disable a mod.
-	r, rename					Rename a mod.
-	o, order					Change load order of a mod.
-	ex, export					Export installed mods to a zip file.
-	im, import					Import mods from a zip file.
-	mc, modpack-create				Create a modpack from the currently installed mods.
-	ms, modpack-switch				Switch to a modpack.
-	ml, modpack-list				List all installed modpacks.
-	mc, modpack-delete				Delete a modpack.
-	mo, modpack-overwrite				Overwrite a modpack.
-	mr, modpack-reset				Reset all installed modpacks.
-	ns, nexus-setup					Setup Nexus Mods integration.
-	up, update					Update h2mm to the latest version.
-	rs, reset					Reset all installed mods.
-	help						Display this help message.
-For more information on usage, use h2mm <COMMAND> --help.
+	i, install					Install a mod by the file provided (directory, zip, patch)
+	u, uninstall					Uninstall a mod
+	l, list						List all installed mods
+	e, enable					Enable a mod
+	d, disable					Disable a mod
+	r, rename					Rename a mod
+	o, order					Change load order of a mod
+	m, modpack					Manage modpacks (collections of mods)
+	ex, export					Export installed mods to a zip file
+	im, import					Import mods from a zip file
+	ns, nexus-setup					Setup Nexus Mods integration
+	up, update					Update h2mm to the latest version
+	rs, reset					Reset all installed mods
+	help						Display this help message
+For more information on usage, use h2mm COMMAND --help.
 Example:
 	h2mm install /path/to/mod.zip
 	h2mm uninstall -n "Example mod"
@@ -511,6 +506,31 @@ Example:
 	h2mm rename -n "Example mod" "New mod name"
 	h2mm rename -i 3 "New mod name"
 EOF
+}
+
+function display_help_modpack() {
+    echo "Usage:"
+    echo "  h2mm modpack [COMMAND] [OPTIONS]"
+    echo
+    echo "Description:"
+    echo "  Manage modpacks (collections of installed mods)."
+    echo
+    echo "Commands:"
+    printf "  %-20s %s\n" "create"		    "Create a modpack from current mods"
+    printf "  %-20s %s\n" "list"             "List all installed modpacks"
+    printf "  %-20s %s\n" "switch"		   "Switch to a modpack"
+    printf "  %-20s %s\n" "delete"  		 "Delete a modpack"
+    printf "  %-20s %s\n" "overwrite" 		"Overwrite an existing modpack"
+    printf "  %-20s %s\n" "reset"           "Reset all installed modpacks"
+    echo
+    echo "Options:"
+    printf "  %-20s %s\n" "-v, --verbose"   "Enable verbose output"
+    printf "  %-20s %s\n" "-h, --help"      "Show help for modpack or a subcommand"
+    echo
+    echo "Examples:"
+    echo "  h2mm modpack create \"MyPack\""
+    echo "  h2mm modpack switch \"MyPack\""
+    echo "  h2mm modpack list"
 }
 
 function display_help_modpack_list() {
@@ -1760,6 +1780,39 @@ function self_update() {
 	exit 0
 }
 
+function modpack() {
+	parse_help_has_arguments display_help_modpack "$@"
+
+	# parse arguments
+	case "$1" in
+		"list"|"l")
+			modpack_list "$@"
+			;;
+		"create"|"c")
+			modpack_create "$@"
+			;;
+		"delete"|"d")
+			modpack_delete "$@"
+			;;
+		"overwrite"|"o")
+			modpack_overwrite "$@"
+			;;
+		"switch"|"s")
+			modpack_switch "$@"
+			;;
+		"reset"|"r")
+			modpack_reset "$@"
+			;;
+		"help"|"h"|"-h"|"--help")
+			$display_help
+			;;
+		*)
+			log ERROR "Unknown command: $command"
+			$display_help
+			;;
+	esac
+}
+
 # --- Nexus Mods Integration ---
 
 function nexus_setup() {
@@ -2040,23 +2093,8 @@ function main() {
 		"rename"|"r")
 			mod_rename "$@"
 			;;
-		"modpack-list"|"ml")
-			modpack_list "$@"
-			;;
-		"modpack-create"|"mc")
-			modpack_create "$@"
-			;;
-		"modpack-delete"|"md")
-			modpack_delete "$@"
-			;;
-		"modpack-overwrite"|"mo")
-			modpack_overwrite "$@"
-			;;
-		"modpack-switch"|"ms")
-			modpack_switch "$@"
-			;;
-		"modpack-reset"|"mr")
-			modpack_reset "$@"
+		"modpack"|"m")
+			modpack "$@"
 			;;
 		"nexus-setup"|"ns")
 			nexus_setup "$@"
