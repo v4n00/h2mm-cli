@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Helldivers 2 Mod Manager (h2mm) - A command-line mod manager for Helldivers 2
+# Helldivers 2 Mod Manager CLI
 
 VERSION="0.6.16"
 
@@ -107,22 +107,39 @@ function parse_help_has_arguments() {
 	[[ $# -eq 1 || "$2" == "--help" || "$2" == "-h"  ]] && { $display_help; exit 0; }
 }
 
+function h() {
+	# helper function to display help for any command
+	local type="$1"
+	shift
+	case "$type" in
+		"e") # normal echo
+			echo -e "$*" >&2
+			;;
+		"c") # command mode, printf with padding
+			printf "  %-20s %s\n" "$1" "$2" >&2
+			;;
+		"n") # new line
+			echo >&2
+			;;
+	esac
+}
+
 function log() {
 	local type="$1"
 	shift
 	case "$type" in
-		INFO)
+		"INFO")
 			[[ "$silent" == "true" ]] && return
 			echo -e "$*" >&2
 			;;
-		WARNING)
+		"WARNING")
 			[[ "$silent" == "true" ]] && return
 			echo -e "${ORANGE}[!]${NC} $*" >&2
 			;;
-		ERROR)
+		"ERROR")
 			echo -e "${RED}[ERROR]${NC} $*" >&2
 			;;
-		PROMPT)
+		"PROMPT")
 			echo -ne "$*" >&2
 			;;
 		*)
@@ -367,237 +384,319 @@ function initialize_modpack_directories() {
 # --- Help Functions ---
 
 function display_help_main() {
-	cat << EOF
-Helldivers 2 Mod Manager v${VERSION}
-Usage: h2mm [OPTION] COMMAND
-Commands:
-	i, install					Install a mod by the file provided (directory, zip, patch)
-	u, uninstall					Uninstall a mod
-	l, list						List all installed mods
-	e, enable					Enable a mod
-	d, disable					Disable a mod
-	r, rename					Rename a mod
-	o, order					Change load order of a mod
-	m, modpack					Manage modpacks (collections of mods)
-	ex, export					Export installed mods to a zip file
-	im, import					Import mods from a zip file
-	ns, nexus-setup					Setup Nexus Mods integration
-	up, update					Update h2mm to the latest version
-	rs, reset					Reset all installed mods
-	help						Display this help message
-For more information on usage, use h2mm COMMAND --help.
-Example:
-	h2mm install /path/to/mod.zip
-	h2mm uninstall -n "Example mod"
-	h2mm list
-EOF
+	h e "Helldivers 2 Mod Manager CLI v$VERSION"
+	h n
+	h e "Usage:"
+	h e "  h2mm [OPTIONS] COMMAND [ARGS]"
+	h n
+	h e "Options"
+	h c "-h, --help" "Show this help message for any command and exit."
+	h n
+	h e "Commands:"
+	h e "  # Mod management"
+	h c "i, install" "Install a mod with any combination of mod files, directories, and zip files"
+	h c "u, uninstall" "Uninstall a mod"
+	h c "l, list" "List all installed mods and their status"
+	h c "e, enable" "Enable a mod"
+	h c "d, disable" "Disable a mod"
+	h c "r, rename" "Rename a mod"
+	h c "o, order" "Change load order of a mod"
+	h n
+	h e "  # Bulk management"
+	h c "m, modpack" "Manage user-defined modpacks (collections of installed mods)"
+	h c "rs, reset" "Reset all installed mods"
+	h c "ex, export" "Export installed mods to an archive"
+	h c "im, import" "Import mods from an archive"
+	h n
+	h e "  # Others"
+	h c "ns, nexus-setup" "Setup Nexus Mods integration"
+	h c "up, update" "Check for updates and update h2mm"
+	h c "h, help" "Show this help message and exit"
+	h n
+	h e "Examples:"
+	h e "  h2mm install --help"
+	h e "  h2mm install ~/Downloads/mod.zip"
+	h e "  h2mm install ~/Downloads/mod\ files/"
+	h e "  h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n \"mod\""
+	h e "  h2mm list"
+	h e "  h2mm uninstall -i 3"
+	h e "  h2mm modpack create \"Example modpack\""
+	h e "  h2mm modpack switch \"Example modpack\""
 }
 
 function display_help_install() {
-	cat << EOF
-Usage: h2mm install [OPTIONS] <MOD_FILES|MOD_DIRECTORIES|MOD_ZIPS>
-Install a mod with any combination of mod files, directories, and zip files.
-Options:
-	-n "MOD_NAME"			Name of the mod.
-	MOD_ZIPS			Zip file(s) containing mod files.
-	MOD_FILES			Mod file(s), accepts wildcards.
-	MOD_DIRECTORIES			Directory/directories containing mod files.
-Example:
-	h2mm install mod.zip
-	h2mm install /path/to/mod/directory/
-	h2mm install /path/to/mod.zip /path/to/mod2.zip /path/to/mod/files # mix and match however you want
-	h2mm install -n "Example mod" mod.patch_0 mod.patch_0.stream # -n to specify name of the mod
-EOF
+    h e "Usage:"
+    h e "  h2mm install [OPTIONS] <FILES...>"
+    h n
+    h e "Description:"
+    h e "  Install one or more mods from files, directories, or archives."
+    h e "  Supports .zip, .rar, and .7z archives (requires 'unzip' or 'unar')."
+    h e "  It it recommended to be in the directory where the files are, or use absolute paths."
+    h e "  If you don't know how this works, use 'cd ~/Downloads' to go to the Downloads folder,"
+    h e "  and then run 'ls -la' to find the files you want to install."
+    h e "  Use the Tab key to auto-complete file names, this helps escape spaces and special characters."
+    h n
+    h e "Options:"
+    h c "-n <NAME>"      "Specify a custom mod name (defaults to archive/folder name)"
+    h n
+    h e "Examples:"
+    h e "  h2mm install ~/Downloads/mod.zip"
+	h e "  h2mm install ~/Downloads/mod\ files/"
+	h e "  h2mm install a0b1c2d3.patch_0 a0b1c2d3.patch_0.stream -n \"mod\""
 }
 
 function display_help_uninstall() {
-	cat << EOF
-Usage: h2mm uninstall [OPTIONS] <"MOD_NAME"|MOD_INDEX>
-Uninstall a mod by name or index.
-Options:
-	-n "MOD_NAME"		Name of the mod to uninstall.
-	-i MOD_INDEX		Index of the mod to uninstall.
-Example:
-	h2mm uninstall -n "Example mod"
-	h2mm uninstall -i 3
-EOF
+    h e "Usage:"
+    h e "  h2mm uninstall [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Uninstall a previously installed mod by name or index."
+    h e "  Removes mod files, updates the database, and downgrades mods if necessary."
+    h n
+    h e "Options:"
+    h c "-i, --index <INDEX>" "Uninstall mod by index (see 'h2mm list')"
+    h c "-n, --name <NAME>"  "Uninstall mod by name"
+    h n
+    h e "Examples:"
+    h e "  h2mm uninstall -i 3"
+    h e "  h2mm uninstall -n \"Example Mod\""
 }
 
 function display_help_enable() {
-	cat << EOF
-Usage: h2mm enable [OPTIONS] <"MOD_NAME"|MOD_INDEX>
-Enable a mod by name or index.
-Options:
-	-n "MOD_NAME"		Name of the mod to enable.
-	-i MOD_INDEX		Index of the mod to enable.
-Example:
-	h2mm enable -n "Example mod"
-	h2mm enable -i 3
-EOF
+    h e "Usage:"
+    h e "  h2mm enable [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Enable a previously installed mod by name or index."
+    h e "  This moves mod files from disabled state to active and preserves their order."
+    h n
+    h e "Options:"
+    h c "-i, --index <INDEX>" "Enable mod by index (see 'h2mm list')"
+    h c "-n, --name <NAME>"  "Enable mod by name"
+    h n
+    h e "Examples:"
+    h e "  h2mm enable -i 3"
+    h e "  h2mm enable -n \"Example Mod\""
 }
 
 function display_help_disable() {
-	cat << EOF
-Usage: h2mm disable [OPTIONS] <"MOD_NAME"|MOD_INDEX>
-Disable a mod by name or index.
-Options:
-	-n "MOD_NAME"		Name of the mod to disable.
-	-i MOD_INDEX		Index of the mod to disable.
-Example:
-	h2mm disable -n "Example mod"
-	h2mm disable -i 3
-EOF
+    h e "Usage:"
+    h e "  h2mm disable [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Disable a previously enabled mod by name or index."
+    h e "  This renames mod files to mark them as disabled and updates the database."
+    h n
+    h e "Options:"
+    h c "-i, --index <INDEX>" "Disable mod by index (see 'h2mm list')"
+    h c "-n, --name <NAME>"  "Disable mod by name"
+    h n
+    h e "Examples:"
+    h e "  h2mm disable -i 3"
+    h e "  h2mm disable -n \"Example Mod\""
 }
 
 function display_help_list() {
-	cat << EOF
-Usage: h2mm list
-Database of mods is stored in Steam/steamapps/common/Helldivers\ 2/data/mods.csv
-You can rename, delete, or edit this file to manage mods manually.
-Options:
-	-v		Verbose mode.
-EOF
+    h e "Usage:"
+    h e "  h2mm list [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  List all installed mods, showing their status, type (LOCAL or NEXUS),"
+    h e "  and optionally more details in verbose mode."
+    h e "  The database of installed mods is stored in the game directory under data/mods.csv"
+    h n
+    h e "Options:"
+    h c "-v, --verbose" "Show detailed information including mod files and Nexus IDs"
 }
 
 function display_help_reset() {
-	cat << EOF
-Usage: h2mm reset
-Reset all installed mods.
-Deletes all installed mods/modpacks and the database file.
-Database of mods is stored in Steam/steamapps/common/Helldivers 2/data/mods.csv, along with the mods.
-EOF
+    h e "Usage:"
+    h e "  h2mm reset [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Reset all installed mods by deleting their files and clearing the database."
+    h e "  Does not reset modpacks, use 'h2mm modpack reset' for that."
+    h e "  This operation is irreversible, use with caution."
+    h n
+    h e "Options:"
+    h c "--no-path-reset" "Do not reset the H2 path file when resetting mods"
 }
 
+
 function display_help_export() {
-	cat << EOF
-Usage: h2mm export
-Export installed mods, modpacks and database to a zip file (in h2mm format - archive with csv) in the current working directory.
-EOF
+    h e "Usage:"
+    h e "  h2mm export [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Export all installed mods to a compressed archive."
+    h e "  The archive is saved to the backups directory (\$HOME/.h2mm/backups)."
 }
 
 function display_help_import() {
-	cat << EOF
-Usage: h2mm import <ARCHIVE_FILE>
-Import mods, modpacks and database from an archive file (coming from h2mm).
-EOF
+    h e "Usage:"
+    h e "  h2mm import [OPTIONS] <ARCHIVE_FILE>"
+    h n
+    h e "Description:"
+    h e "  Import mods from a compressed archive."
+    h e "  Importing resets existing mods before applying the archive, modpacks are preserved."
+    h n
+    h e "Examples:"
+    h e "  h2mm import ~/.h2mm/config/backups/HD2-Mods-2025-12-12_15-00-00.tar.gz"
 }
 
 function display_help_order() {
-	cat << EOF
-Usage: h2mm order [OPTIONS] <"MOD_NAME"|MOD_INDEX> <NEW_INDEX>
-Change order of a mod by name or index.
-Options:
-	-i index		Index of the mod to order.
-	-n "MOD_NAME"		Name of the mod to order.
-Example:
-	h2mm order -n "Example mod" 6
-	h2mm order -i 3 6
-EOF
+    h e "Usage:"
+    h e "  h2mm order [OPTIONS] <NEW_INDEX>"
+    h n
+    h e "Description:"
+    h e "  Change the load order of an installed mod."
+    h e "  Mods can be reindexed by name or index to ensure correct load priority."
+    h n
+    h e "Options:"
+    h c "-i, --index <INDEX>" "Specify the mod by its current index (see 'h2mm list')"
+    h c "-n, --name <NAME>"  "Specify the mod by name"
+    h n
+    h e "Arguments:"
+    h c "<NEW_INDEX>" "The new load order index for the mod"
+    h n
+    h e "Examples:"
+    h e "  h2mm order -i 3 1"
+    h e "  h2mm order -n \"Example Mod\" 2"
 }
 
 function display_help_rename() {
-	cat << EOF
-Usage: h2mm rename [OPTIONS] <"MOD_NAME"|MOD_INDEX> <NEW_NAME>
-Rename a mod by name or index.
-Options:
-	-n "MOD_NAME"		Name of the mod to rename.
-	-i MOD_INDEX		Index of the mod to rename.
-Example:
-	h2mm rename -n "Example mod" "New mod name"
-	h2mm rename -i 3 "New mod name"
-EOF
+    h e "Usage:"
+    h e "  h2mm rename [OPTIONS] <NEW_NAME>"
+    h n
+    h e "Description:"
+    h e "  Rename an installed mod."
+    h n
+    h e "Options:"
+    h c "-i, --index <INDEX>" "Specify the mod by its current index (see 'h2mm list')"
+    h c "-n, --name <NAME>"  "Specify the mod by current name"
+    h n
+    h e "Arguments:"
+    h c "<NEW_NAME>" "The new name for the mod"
+    h n
+    h e "Examples:"
+    h e "  h2mm rename -i 3 \"New Mod Name\""
+    h e "  h2mm rename -n \"Old Mod Name\" \"New Mod Name\""
 }
 
 function display_help_modpack() {
-    echo "Usage:"
-    echo "  h2mm modpack [COMMAND] [OPTIONS]"
-    echo
-    echo "Description:"
-    echo "  Manage modpacks (collections of installed mods)."
-    echo
-    echo "Commands:"
-    printf "  %-20s %s\n" "create"		    "Create a modpack from current mods"
-    printf "  %-20s %s\n" "list"             "List all installed modpacks"
-    printf "  %-20s %s\n" "switch"		   "Switch to a modpack"
-    printf "  %-20s %s\n" "delete"  		 "Delete a modpack"
-    printf "  %-20s %s\n" "overwrite" 		"Overwrite an existing modpack"
-    printf "  %-20s %s\n" "reset"           "Reset all installed modpacks"
-    echo
-    echo "Options:"
-    printf "  %-20s %s\n" "-v, --verbose"   "Enable verbose output"
-    printf "  %-20s %s\n" "-h, --help"      "Show help for modpack or a subcommand"
-    echo
-    echo "Examples:"
-    echo "  h2mm modpack create \"MyPack\""
-    echo "  h2mm modpack switch \"MyPack\""
-    echo "  h2mm modpack list"
+    h e "Usage:"
+    h e "  h2mm modpack COMMAND [ARGS]"
+    h n
+    h e "Description:"
+    h e "  Manage user-defined modpacks (collections of installed mods)."
+    h n
+    h e "Commands:"
+    h c "list, l"       "List all installed modpacks"
+    h c "create, c"     "Create a new modpack from currently installed mods"
+    h c "delete, d"     "Delete a modpack"
+    h c "overwrite, o"  "Overwrite an existing modpack"
+    h c "switch, s"     "Switch to a different modpack"
+    h c "reset, rs"      "Reset all installed modpacks"
+    h c "help, h"       "Show this help message and exit"
+    h n
+    h e "Examples:"
+    h e "  h2mm modpack list"
+    h e "  h2mm modpack create \"Example Modpack\""
+    h e "  h2mm modpack switch -n \"Example Modpack\""
 }
 
 function display_help_modpack_list() {
-	cat << EOF
-Usage: h2mm modpack-list
-List all installed modpacks.
-Database of modpacks is stored in Steam/steamapps/common/Helldivers\ 2/data/modpacks/modpacks.csv
-You can rename, delete, or edit this file to manage modpacks manually.
-Options:
-	-v		Verbose mode.
-EOF
+    h e "Usage:"
+    h e "  h2mm modpack list [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  List all saved modpacks."
+    h e "  Database of modpacks is stored in the game directory under data/modpacks/modpack.csv"
+    h n
+    h e "Options:"
+    h c "-v, --verbose" "Show detailed contents of each modpack"
 }
 
 function display_help_modpack_create() {
-	cat << EOF
-Usage: h2mm modpack-create -n "MODPACK_NAME"
-Create a modpack from a range of mods specified after command is called.
-EOF
+    h e "Usage:"
+    h e "  h2mm modpack create -n <MODPACK_NAME>"
+    h n
+    h e "Description:"
+    h e "  Create a new modpack by selecting installed mods."
+    h n
+    h e "Options:"
+    h c "-n <MODPACK_NAME>" "Name of the modpack to create (required)"
+    h n
+    h e "Examples:"
+    h e "  h2mm modpack create -n \"Example Modpack\""
 }
 
 function display_help_modpack_switch() {
-	cat << EOF
-Usage: h2mm modpack-switch [OPTIONS] <"MODPACK_NAME"|MODPACK_INDEX>
-Switch to a modpack by name or index.
-Options:
-	-n "MODPACK_NAME"	Name of the modpack to switch to.
-	-i index		Index of the modpack to switch to.
-EOF
+    h e "Usage:"
+    h e "  h2mm modpack switch [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Switch to a saved modpack. This will reset the current mods and apply the selected modpack."
+    h n
+    h e "Options:"
+    h c "-i, --index <MODPACK_INDEX>" "Index of the modpack to switch to"
+    h c "-n, --name <MODPACK_NAME>" "Name of the modpack to switch to"
+    h n
+    h e "Examples:"
+    h e "  h2mm modpack switch -i 2"
+    h e "  h2mm modpack switch -n \"Example Modpack\""
 }
 
 function display_help_modpack_reset() {
-	cat << EOF
-Usage: h2mm modpack-reset
-Reset all installed modpacks.
-Deletes all installed modpacks and the database file.
-Database of modpacks is stored in Steam/steamapps/common/Helldivers\ 2/data/modpacks/modpacks.csv, along with the modpacks.
-EOF
+    h e "Usage:"
+    h e "  h2mm modpack reset"
+    h n
+    h e "Description:"
+    h e "  Reset all saved modpacks. This will delete all modpack archives and the modpack database."
 }
 
 function display_help_modpack_delete() {
-	cat << EOF
-Usage: h2mm modpack-delete [OPTIONS] <"MODPACK_NAME"|MODPACK_INDEX>
-Delete a modpack by name or index.
-Options:
-	-n "MODPACK_NAME"	Name of the modpack to delete.
-	-i index		Index of the modpack to delete.
-EOF
+    h e "Usage:"
+    h e "  h2mm modpack delete [OPTIONS]"
+    h n
+    h e "Description:"
+    h e "  Delete a saved modpack by name or index. This will remove the modpack archive and its database entry."
+    h n
+    h e "Options:"
+    h e "  -i, --index <modpack_index>  Index of the modpack to delete."
+    h e "  -n, --name <modpack_name>   Name of the modpack to delete."
+    h n
+    h e "Examples:"
+    h e "  h2mm modpack delete -i 2"
+    h e "  h2mm modpack delete -n \"Example Modpack\""
 }
 
 function display_help_modpack_overwrite() {
-	cat << EOF
-Usage: h2mm modpack-overwrite [OPTIONS] <"MODPACK_NAME"|MODPACK_INDEX>
-Overwrite a modpack (the mods that it uses) by name or index.
-Options:
-	-n "MODPACK_NAME"	Name of the modpack to overwrite.
-	-i index		Index of the modpack to overwrite.
-EOF
+	h e "Usage:"
+	h e "  h2mm modpack overwrite [OPTIONS]"
+	h n
+	h e "Description:"
+	h e "  Overwrite an existing modpack with the currently installed mods."
+	h n
+	h e "Options:"
+	h c "-n, --name <MODPACK_NAME>" "Name of the modpack to overwrite"
+	h c "-i, --index <MODPACK_INDEX>" "Index of the modpack to overwrite"
+	h n
+	h e "Examples:"
+	h e "  h2mm modpack overwrite -n \"Example Modpack\""
+	h e "  h2mm modpack overwrite -i 2"
 }
 
 function display_help_nexus_setup() {
-	cat << EOF
-Usage: h2mm nexus-setup
-Setup nexusmods integration.
-This will create a config file in ~/.config/h2mm/apikey with the API key.
-This will create a desktop entry in ~/.local/share/applications/h2mm.desktop.
-Run this again in case you change the API key or want to change the desktop entry.
-EOF
+    h e "Usage:"
+    h e "  h2mm nexus-setup"
+    h n
+    h e "Description:"
+    h e "  Run the setup wizard to configure Nexus Mods integration for h2mm."
+    h e "  You will need to provide your Nexus Mods API key and configure a terminal for the desktop entry."
+    h e "  This command creates a file containing your API key at ~/.config/h2mm/apikey."
+    h e "  This command creates a desktop entry at ~/.local/share/applications/h2mm.desktop."
+    h e "  If you change your API key or want to change the terminal, run this command again."
 }
 
 # --- Main Functions ---
@@ -1514,6 +1613,39 @@ function mod_rename() {
 
 # --- Modpack management ---
 
+function modpack() {
+	parse_help_has_arguments display_help_modpack "$@"
+
+	# parse arguments
+	case "$1" in
+		"list"|"l")
+			modpack_list "$@"
+			;;
+		"create"|"c")
+			modpack_create "$@"
+			;;
+		"delete"|"d")
+			modpack_delete "$@"
+			;;
+		"overwrite"|"o")
+			modpack_overwrite "$@"
+			;;
+		"switch"|"s")
+			modpack_switch "$@"
+			;;
+		"reset"|"rs")
+			modpack_reset "$@"
+			;;
+		"help"|"h"|"-h"|"--help")
+			$display_help
+			;;
+		*)
+			log ERROR "Unknown command: $command"
+			$display_help
+			;;
+	esac
+}
+
 function modpack_list() {
 	parse_help_no_arguments display_help_modpack_list "$@"
 	local verbose=false
@@ -1778,39 +1910,6 @@ function self_update() {
 	# run the installer for the latest version
 	bash -c "$(curl -fsSL https://raw.githubusercontent.com/v4n00/h2mm-cli/refs/heads/master/install.sh)"
 	exit 0
-}
-
-function modpack() {
-	parse_help_has_arguments display_help_modpack "$@"
-
-	# parse arguments
-	case "$1" in
-		"list"|"l")
-			modpack_list "$@"
-			;;
-		"create"|"c")
-			modpack_create "$@"
-			;;
-		"delete"|"d")
-			modpack_delete "$@"
-			;;
-		"overwrite"|"o")
-			modpack_overwrite "$@"
-			;;
-		"switch"|"s")
-			modpack_switch "$@"
-			;;
-		"reset"|"r")
-			modpack_reset "$@"
-			;;
-		"help"|"h"|"-h"|"--help")
-			$display_help
-			;;
-		*)
-			log ERROR "Unknown command: $command"
-			$display_help
-			;;
-	esac
 }
 
 # --- Nexus Mods Integration ---
