@@ -1908,6 +1908,42 @@ function self_update() {
 	exit 0
 }
 
+=======
+function modpack() {
+	parse_help_has_arguments display_help_modpack "$@"
+	local type="$1"
+	shift
+
+	# parse arguments
+	case "$type" in
+		"list"|"l")
+			modpack_list "$@"
+			;;
+		"create"|"c")
+			modpack_create "$@"
+			;;
+		"delete"|"d")
+			modpack_delete "$@"
+			;;
+		"overwrite"|"o")
+			modpack_overwrite "$@"
+			;;
+		"switch"|"s")
+			modpack_switch "$@"
+			;;
+		"reset"|"r")
+			modpack_reset "$@"
+			;;
+		"help"|"h"|"-h"|"--help")
+			$display_help
+			;;
+		*)
+			log ERROR "Unknown command: $command"
+			$display_help
+			;;
+	esac
+}
+
 # --- Nexus Mods Integration ---
 
 function nexus_setup() {
