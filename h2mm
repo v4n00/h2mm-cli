@@ -1908,7 +1908,6 @@ function self_update() {
 	exit 0
 }
 
-=======
 function modpack() {
 	parse_help_has_arguments display_help_modpack "$@"
 	local type="$1"
