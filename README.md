@@ -34,6 +34,23 @@ h2mm --help
 
 To find out how to use a command, run `h2mm COMMAND --help`. This is the most up-to-date source of information about the commands.
 
+## Available commands
+
+- `install` or `i` - Install a mod by the file provided (directory, zip, patch)
+- `uninstall` or `u` - Uninstall a mod
+- `list` or `l` - List all installed mods
+- `enable` or `e` - Enable a mod
+- `disable` or `d` - Disable a mod
+- `rename` or `r` - Rename a mod
+- `order` or `o` - Change load order for a mod
+- `export` or `ex` - Export installed mods to a zip file
+- `import` or `im` - Import mods from a zip file
+- `modpack` or `m` - Manage modpacks (collections of mods)
+- `nexus-setup` or `ns` - Setup Nexus Mods integration
+- `update` or `up` - Update h2mm to latest version
+- `reset` or `rs` - Reset all installed mods
+- `help` or `h` - Display this help message
+
 ## Examples
 
 ```bash
