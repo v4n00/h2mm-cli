@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Helldivers 2 Mod Manager CLI
 
-VERSION="0.6.16"
+VERSION="0.7.0"
 
 # --- Globals ---
 
@@ -97,28 +97,9 @@ function get_entry_from_db_by_nexus_mod_id() {
 	echo "$(awk -F, -v pos="$DB_MOD_NEXUS_ID_POS" -v id="$1" 'NR > 1 && $pos == id {print $0}' "$DB_FILE")"
 }
 
-function parse() {
-	local type="$1"
-	shift
-	# need a way to specify multiple options
-	case "$type" in
-		"help")
-			display_help="$1"
-			[[ "$2" == "ARGS" && $# -eq 2 ]] || [[ "$2" == "--help" || "$2" == "-h" ]] && { $display_help; exit 0; }
-			;;
-		"name")
-			if [[ "$1" == "--name" || "$1" == "-n" ]]; then
-				[[ -z "$2" ]] && { log ERROR "Name is required."; exit 1; }
-				mod_name="$2"; shift 2;
-			fi
-			;;
-		"index")
-			if [[ "$1" == "--index" || "$1" == "-i" ]]; then
-				[[ -z "$2" ]] && { log ERROR "Index is required."; exit 1; }
-				mod_index="$2"; shift 2;
-			fi
-			;;
-	esac
+function parse_help() {
+	display_help="$1"
+	[[ "$2" == "ARGS" && $# -eq 2 ]] || [[ "$2" == "--help" || "$2" == "-h" ]] && { $display_help; exit 0; }
 }
 
 function h() {
@@ -767,7 +748,7 @@ function downgrade_mods() {
 }
 
 function mod_enable() {
-	parse help display_help_enable ARGS "$@"
+	parse_help display_help_enable ARGS "$@"
 	local mod_name=""
 	local mod_index=""
 
@@ -840,7 +821,7 @@ function mod_enable() {
 }
 
 function mod_disable() {
-	parse help display_help_disable ARGS "$@"
+	parse_help display_help_disable ARGS "$@"
 	local mod_name=""
 	local mod_index=""
 
@@ -905,7 +886,7 @@ function mod_disable() {
 }
 
 function mod_reset() {
-	parse help display_help_reset "$@"
+	parse_help display_help_reset "$@"
 	local no_path_reset=false; [[ "$1" == "--no-path-reset" ]] && no_path_reset=true
 
 	log PROMPT "Are you sure you want to ${RED}reset${NC} all installed mods? (Y/n): "
@@ -923,7 +904,7 @@ function mod_reset() {
 }
 
 function mod_install() {
-	parse help display_help_install ARGS "$@"
+	parse_help display_help_install ARGS "$@"
 	local mod_name=""
 	local mod_dir=()
 	local mod_files=()
@@ -1197,7 +1178,7 @@ function mod_install() {
 }
 
 function mod_uninstall() {
-	parse help display_help_uninstall ARGS "$@"
+	parse_help display_help_uninstall ARGS "$@"
 	local mod_name=""
 	local mod_index=""
 
@@ -1254,7 +1235,7 @@ function mod_uninstall() {
 }
 
 function mod_list() {
-	parse help display_help_list "$@"
+	parse_help display_help_list "$@"
     local verbose=false
 
     # parse arguments
@@ -1302,7 +1283,7 @@ function mod_list() {
 }
 
 function mod_export() {
-	parse help display_help_export "$@"
+	parse_help display_help_export "$@"
 	local save_dir=${BACKUPS_DIR}
 	local archive_name="HD2-Mods-$(date +%Y-%m-%d_%H-%M-%S)"
 	local modpack_export=false
@@ -1358,7 +1339,7 @@ function mod_export() {
 }
 
 function mod_import() {
-	parse help display_help_import ARGS "$@"
+	parse_help display_help_import ARGS "$@"
 	local modpack=false; [[ "$1" == "--modpack" ]] && { modpack=true; shift 1; }
 
 	# check if the file exists
@@ -1417,7 +1398,7 @@ function mod_import() {
 }
 
 function mod_order {
-	parse help display_help_order ARGS "$@"
+	parse_help display_help_order ARGS "$@"
 	local mod_name=""
 	local mod_index=""
 	local new_index=""
@@ -1583,7 +1564,7 @@ function mod_order {
 }
 
 function mod_rename() {
-	parse help display_help_rename ARGS "$@"
+	parse_help display_help_rename ARGS "$@"
 	local mod_name=""
 	local new_mod_name=""
 	local mod_index=""
@@ -1627,10 +1608,12 @@ function mod_rename() {
 # --- Modpack management ---
 
 function modpack() {
-	parse help display_help_modpack ARGS "$@"
+	parse_help display_help_modpack ARGS "$@"
+	local type="$1"
+	shift
 
 	# parse arguments
-	case "$1" in
+	case "$type" in
 		"list"|"l")
 			modpack_list "$@"
 			;;
@@ -1660,7 +1643,7 @@ function modpack() {
 }
 
 function modpack_list() {
-	parse help display_help_modpack_list "$@"
+	parse_help display_help_modpack_list "$@"
 	local verbose=false
 
 	# parse arguments
@@ -1705,7 +1688,7 @@ function modpack_list() {
 }
 
 function modpack_create() {
-	parse help display_help_modpack_create ARGS "$@"
+	parse_help display_help_modpack_create ARGS "$@"
 	local modpack_name=""
 
 	# parse arguments
@@ -1782,7 +1765,7 @@ function modpack_create() {
 }
 
 function modpack_switch() {
-	parse help display_help_modpack_switch ARGS "$@"
+	parse_help display_help_modpack_switch ARGS "$@"
 	local modpack_name=""
 	local modpack_index=""
 
@@ -1819,7 +1802,7 @@ function modpack_switch() {
 }
 
 function modpack_reset() {
-	parse help display_help_modpack_reset "$@"
+	parse_help display_help_modpack_reset "$@"
 
 	log PROMPT "Are you sure you want to ${RED}reset${NC} all installed modpacks? (Y/n): "
 	read confirm
@@ -1837,7 +1820,7 @@ function modpack_reset() {
 }
 
 function modpack_delete() {
-	parse help display_help_modpack_delete ARGS "$@"
+	parse_help display_help_modpack_delete ARGS "$@"
 	local modpack_name=""
 	local modpack_index=""
 
@@ -1872,7 +1855,7 @@ function modpack_delete() {
 }
 
 function modpack_overwrite() {
-	parse help display_help_modpack_overwrite ARGS "$@"
+	parse_help display_help_modpack_overwrite ARGS "$@"
 	local modpack_name=""
 	local modpack_index=""
 
@@ -1928,7 +1911,7 @@ function self_update() {
 # --- Nexus Mods Integration ---
 
 function nexus_setup() {
-	parse help display_help_nexus_setup "$@"
+	parse_help display_help_nexus_setup "$@"
 	local nexus_api_key=""
 
 	log INFO "This is the setup wizard for the ${ORANGE}Nexus Mods${NC} integration."
@@ -2169,7 +2152,7 @@ function check_for_h2mm_update() {
 # --- Main ---
 
 function main() {
-	parse help display_help_main ARGS "$@"
+	parse_help display_help_main ARGS "$@"
 
 	command="$1"; shift
 

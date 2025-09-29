@@ -1,5 +1,11 @@
 # Helldivers 2 Mod Manager CLI
 
+> [!Deprecation notice]
+> This project is deprecated as of 30/09/2025 in favor of [Arsenal](https://www.nexusmods.com/helldivers2/mods/4664)'s 0.30.0 release, a GUI mod manager that supports every feature of Helldivers 2 Mod Manager CLI and more, on Linux.
+> **Thank you for the support up until now and make sure to check out Arsenal!**
+
+## Overview
+
 Helldivers 2 Mod Manager CLI is a command line interface for managing Helldivers 2 mods. Since there is no Linux mod manager available and I like being a nerd by using CLI tools instead of GUIs, this project was born.
 
 ## Installation
