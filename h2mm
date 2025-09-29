@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Helldivers 2 Mod Manager (h2mm) - A command-line mod manager for Helldivers 2
 
-VERSION="0.6.16"
+VERSION="0.6.17"
 
 # --- Globals ---
 
@@ -1782,9 +1782,11 @@ function self_update() {
 
 function modpack() {
 	parse_help_has_arguments display_help_modpack "$@"
+	local type="$1"
+	shift
 
 	# parse arguments
-	case "$1" in
+	case "$type" in
 		"list"|"l")
 			modpack_list "$@"
 			;;
